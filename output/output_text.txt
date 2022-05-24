@@ -1,0 +1,2 @@
+Bagpipe    Rarity: 6    Level: 70/90    Elite: 2    Potential: 5    Skill rank 7    S1: M0    S2: M3    S3: M3
+Specter    Rarity: 5    Level: 70/80    Elite: 2    Potential: 3    Skill rank 7    S1: M0    S2: M3
