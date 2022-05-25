@@ -83,16 +83,19 @@ def arkAssist(input, nameReader):
 			promoProb = fuzz.partial_ratio(text, 'Promotion')
 			promoDim = [(int(tl[0] + 70), int(tl[1]) - 40), (int(br[0] + 110), int(br[1] + 30))]
 
-	croppedPromo = rightSide[promoDim[0][1]:promoDim[1][1], promoDim[0][0]:promoDim[1][0]]
-	croppedPromo = cv.cvtColor(croppedPromo, cv.COLOR_BGR2GRAY)
+	if promoDim == [0, 0]:
+		opPromotion = 'Unrecognized'
+	else: 
+		croppedPromo = rightSide[promoDim[0][1]:promoDim[1][1], promoDim[0][0]:promoDim[1][0]]
+		croppedPromo = cv.cvtColor(croppedPromo, cv.COLOR_BGR2GRAY)
 
-	for e in os.listdir('elite_icon'):
-		elite = cv.imread('elite_icon/' + e, 0)
-		eliteComp = cv.matchTemplate(croppedPromo, elite, cv.TM_CCORR_NORMED)
+		for e in os.listdir('elite_icon'):
+			elite = cv.imread('elite_icon/' + e, 0)
+			eliteComp = cv.matchTemplate(croppedPromo, elite, cv.TM_CCORR_NORMED)
 
-		if np.amax(eliteComp) > np.amax(eliteProb):
-			eliteProb = eliteComp
-			opPromotion = e[:-4].upper()
+			if np.amax(eliteComp) > np.amax(eliteProb):
+				eliteProb = eliteComp
+				opPromotion = e[:-4].upper()
 
 	# READ SKILL MASTERY--------------------------------------------------------------------------------------------------------------
 	rankProb = 0
