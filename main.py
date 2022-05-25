@@ -1,4 +1,5 @@
 import os
+import easyocr
 import cv2 as cv
 import numpy as np
 import PySimpleGUI as sg
@@ -16,6 +17,7 @@ while True:
 	event, values = window.read()
 
 	if event == 'Select' and values['-FOLDER-'] != '':
+		nameReader = easyocr.Reader(['en'])
 		window['-TEXT-'].update('Processing... please do not close the window')
 		selectedFolder = values['-FOLDER-']
 		open('output/output_text.txt', 'w').close()
@@ -38,7 +40,7 @@ while True:
 					cv.imwrite(destination, original, [int(cv.IMWRITE_JPEG_QUALITY), 100])
 
 		for i in os.listdir('input'):
-			arkAssist(i)
+			arkAssist(i, nameReader)
 
 		window.close()
 		os.system('notepad.exe output/output_text.txt')
