@@ -185,10 +185,14 @@ def arkAssist(input, nameReader):
 			lvProb1 = fuzz.partial_ratio(text, 'EXP')
 			lvDim = [(int(tl[0] - 130), int(tl[1]) - 40), (int(br[0] - 30), int(br[1] + 50))]
 
-		for lv in range(1, 90):
-			if lvProb2 < fuzz.partial_ratio(text, str(lv)):
-				lvProb2 = fuzz.partial_ratio(text, str(lv))
-				lvtemp = text
+	if lvProb1 < 0.9:
+		for (bbox, text, prob) in skillList:
+			(tl, tr, br, bl) = bbox
+
+			for lv in range(1, 90):
+				if lvProb2 < fuzz.partial_ratio(text, str(lv)):
+					lvProb2 = fuzz.partial_ratio(text, str(lv))
+					lvtemp = text
 
 	if lvProb1 > lvProb2:
 		croppedLv = rightSide[lvDim[0][1]:lvDim[1][1], lvDim[0][0]:lvDim[1][0]]
@@ -214,6 +218,8 @@ def arkAssist(input, nameReader):
 		maxLevel = 60
 	elif opRarity == 2 and opPromotion == 'E1':
 		maxLevel = 55
+	elif opRarity == 5 and opPromotion == 'E0' or opRarity == 4 and opPromotion == 'E0':
+		maxLevel = 50
 	elif opRarity == 2 and opPromotion == 'E0':
 		maxLevel = 40
 
