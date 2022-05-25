@@ -9,7 +9,9 @@ from fuzzywuzzy import fuzz
 from fuzzywuzzy import process
 import pytesseract
 
-def arkAssist(input):
+pytesseract.pytesseract.tesseract_cmd = 'Tesseract-OCR/tesseract.exe'
+
+def arkAssist(input, nameReader):
 	opName = ''
 	opRarity = 0
 	opPromotion = ''
@@ -35,11 +37,15 @@ def arkAssist(input):
 	rightSide = rosterCopy[0:int(rosterDim[0]), int(rosterDim[1] / 2):int(rosterDim[1])]
 
 	readName = leftSide
-	nameReader = easyocr.Reader(['en'])
+	
 	nameList = nameReader.readtext(readName, detail = 0)
 	readSkills = rightSide
 	skillList = nameReader.readtext(readSkills)
 	skillList2 = nameReader.readtext(readSkills, detail = 0)
+
+	# plt.imshow(rightSide)
+	# plt.waitforbuttonpress()
+	# print(skillList2)
 
 	#---------------------------------------------------------------------------------------------------------------------------------
 	opjson = open('json_files/character_table.json', encoding = "utf8")
@@ -169,27 +175,33 @@ def arkAssist(input):
 				opPotential = p[:-4]
 
 	# READ LEVEL----------------------------------------------------------------------------------------------------------------------
-	lvProb, lvNum, lvtemp = 0, 1, ''
+	lvProb1, lvProb2, lvNum, lvtemp = 0, 0, 1, ''
 	lvDim = [0, 0]
 
 	for (bbox, text, prob) in skillList:
 		(tl, tr, br, bl) = bbox
 
-		if lvProb < fuzz.partial_ratio(text, 'EXP'):
-			lvProb = fuzz.partial_ratio(text, 'EXP')
+		if lvProb1 < fuzz.partial_ratio(text, 'EXP'):
+			lvProb1 = fuzz.partial_ratio(text, 'EXP')
 			lvDim = [(int(tl[0] - 130), int(tl[1]) - 40), (int(br[0] - 30), int(br[1] + 50))]
 
-	croppedLv = rightSide[lvDim[0][1]:lvDim[1][1], lvDim[0][0]:lvDim[1][0]]
-	croppedLv = cv.cvtColor(croppedLv, cv.COLOR_BGR2GRAY)
-	level = nameReader.readtext(croppedLv, detail = 0)
+		for lv in range(1, 90):
+			if lvProb2 < fuzz.partial_ratio(text, str(lv)):
+				lvProb2 = fuzz.partial_ratio(text, str(lv))
+				lvtemp = text
 
-	for l in level:
-		if lvNum > fuzz.partial_ratio(l, 'LV'):
-			lvNum = fuzz.partial_ratio(l, 'LV')
-			lvtemp = l
+	if lvProb1 > lvProb2:
+		croppedLv = rightSide[lvDim[0][1]:lvDim[1][1], lvDim[0][0]:lvDim[1][0]]
+		croppedLv = cv.cvtColor(croppedLv, cv.COLOR_BGR2GRAY)
+		level = nameReader.readtext(croppedLv, detail = 0)
 
-	if lvtemp == '' or lvtemp == ']' or lvtemp == '|':
-		lvtemp = '1'
+		for l in level:
+			if lvNum > fuzz.partial_ratio(l, 'LV'):
+				lvNum = fuzz.partial_ratio(l, 'LV')
+				lvtemp = l
+
+		if lvtemp == '' or lvtemp == ']' or lvtemp == '|':
+			lvtemp = '1'
 
 	opLevel = int(lvtemp)
 	maxLevel = 90
