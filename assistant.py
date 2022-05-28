@@ -9,7 +9,7 @@ from fuzzywuzzy import fuzz
 from fuzzywuzzy import process
 import pytesseract
 
-pytesseract.pytesseract.tesseract_cmd = 'Tesseract-OCR/tesseract.exe'
+# pytesseract.pytesseract.tesseract_cmd = 'Tesseract-OCR/tesseract.exe'
 
 def arkAssist(input, nameReader):
 	opName = ''
@@ -59,6 +59,8 @@ def arkAssist(input, nameReader):
 	for key in keyList:
 		opList.append(datajson[key]['name'])
 		rarityList.append(datajson[key]['rarity'])
+
+	opjson.close()
 
 	for name in nameList:
 		if name != 'Ranged' and name != 'Range' and name != 'DPS' and name != 'Slow' and name != 'Trust':
@@ -246,16 +248,51 @@ def arkAssist(input, nameReader):
 	# 		print('S3:', opS3)
 
 
-	outputText = open('output/output_text.txt', 'a')
+	opFields = ['Name', 'Rarity', 'Level', 'Promotion', 'Potential', 'Skill', 'S1', 'S2', 'S3']
+	opInput = [opName, str(opRarity + 1), str(opLevel) + '/' + str(maxLevel), opPromotion, str(opPotential), skillRank, opS1, opS2, opS3]
 
-	if os.stat('output/output_text.txt').st_size != 0:
-		outputText.write('\n')
+	if skillRank == 'RANK 7' and opRarity == 4:
+		opInput[8] = ''
+	elif skillRank == 'RANK 7' and opRarity == 3:
+		opInput[8] = ''
+	elif skillRank == 'RANK 7' and opRarity < 3:
+		opInput[8] = ''
+		opInput[7] = ''
+		opInput[6] = ''
 
-	if skillRank == 'RANK 7' and opRarity > 4  or opName == 'Amiya':
-		outputText.write(str(opName) + '    Rarity: ' + str(opRarity + 1) + '    Level: ' + str(opLevel) + '/' + str(maxLevel) + '    Elite: ' + str(opPromotion[-1:]) + '    Potential: ' + str(opPotential) + '    Skill ' + str(skillRank.lower()) + '    S1: ' + opS1 + '    S2: ' + opS2 + '    S3: ' + opS3)
-	elif skillRank == 'RANK 7' and opRarity > 3:
-		outputText.write(str(opName) + '    Rarity: ' + str(opRarity + 1) + '    Level: ' + str(opLevel) + '/' + str(maxLevel) + '    Elite: ' + str(opPromotion[-1:]) + '    Potential: ' + str(opPotential) + '    Skill ' + str(skillRank.lower()) + '    S1: ' + opS1 + '    S2: ' + opS2)
-	elif skillRank == 'RANK 7' and opRarity > 2:
-		outputText.write(str(opName) + '    Rarity: ' + str(opRarity + 1) + '    Level: ' + str(opLevel) + '/' + str(maxLevel) + '    Elite: ' + str(opPromotion[-1:]) + '    Potential: ' + str(opPotential) + '    Skill ' + str(skillRank.lower()) + '    S1: ' + opS1)
-	else:
-		outputText.write(str(opName) + '    Rarity: ' + str(opRarity + 1) + '    Level: ' + str(opLevel) + '/' + str(maxLevel) + '    Elite: ' + str(opPromotion[-1:]) + '    Potential: ' + str(opPotential) + '    Skill ' + str(skillRank.lower()))
+	key = sample[:-4]
+	opDict = {key: {}}
+	return dict(zip(opFields, opInput))
+
+
+	# with open('output/output_table.json', 'a+') as file:
+	# 	if os.stat('output/output_table.json').st_size == 0:
+	# 		json.dump(opDict, file, indent = 4)
+	# 	else:
+	# 		print(file.read())
+	# 		tableData = json.load(file)
+	# 		tableData.append(opDict)
+	# 		file.seek(0)
+	# 		json.dump(tableData, file, indent = 4)
+
+
+		# if os.stat('output/output_table.json').st_size != 0:
+		# 	file.write(',\n')
+
+		# json.dump(opDict, file, indent = 4)
+
+	
+
+	# outputText = open('output/output_text.txt', 'a')
+
+	# if os.stat('output/output_text.txt').st_size != 0:
+	# 	outputText.write('\n')
+
+	# if skillRank == 'RANK 7' and opRarity > 4  or opName == 'Amiya':
+	# 	outputText.write(str(opName) + '    Rarity: ' + str(opRarity + 1) + '    Level: ' + str(opLevel) + '/' + str(maxLevel) + '    Elite: ' + str(opPromotion[-1:]) + '    Potential: ' + str(opPotential) + '    Skill ' + str(skillRank.lower()) + '    S1: ' + opS1 + '    S2: ' + opS2 + '    S3: ' + opS3)
+	# elif skillRank == 'RANK 7' and opRarity > 3:
+	# 	outputText.write(str(opName) + '    Rarity: ' + str(opRarity + 1) + '    Level: ' + str(opLevel) + '/' + str(maxLevel) + '    Elite: ' + str(opPromotion[-1:]) + '    Potential: ' + str(opPotential) + '    Skill ' + str(skillRank.lower()) + '    S1: ' + opS1 + '    S2: ' + opS2)
+	# elif skillRank == 'RANK 7' and opRarity > 2:
+	# 	outputText.write(str(opName) + '    Rarity: ' + str(opRarity + 1) + '    Level: ' + str(opLevel) + '/' + str(maxLevel) + '    Elite: ' + str(opPromotion[-1:]) + '    Potential: ' + str(opPotential) + '    Skill ' + str(skillRank.lower()) + '    S1: ' + opS1)
+	# else:
+	# 	outputText.write(str(opName) + '    Rarity: ' + str(opRarity + 1) + '    Level: ' + str(opLevel) + '/' + str(maxLevel) + '    Elite: ' + str(opPromotion[-1:]) + '    Potential: ' + str(opPotential) + '    Skill ' + str(skillRank.lower()))
