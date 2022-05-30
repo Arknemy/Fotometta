@@ -1,5 +1,5 @@
 # Fotometta
-A Python application to scan and compile your Arknights roster.
+A Python application to scan and compile your Arknights roster using image recognition.
 
 ## Installation
 Use the package manager [pip](https://pip.pypa.io/en/stable/) to install the requirements.
