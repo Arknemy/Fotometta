@@ -9,6 +9,8 @@ pip install -r requirements.txt
 ```
 
 ## Usage
+Run fotometta.py.
+
 ![](https://github.com/Phoenix22809/Fotometta/blob/main/misc/mainwindow.PNG)
 
 Input the folder that contains your roster, and either create a new roster or update the existing one.
