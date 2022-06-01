@@ -22,7 +22,7 @@ skillRank = ""
 opS1 = ""
 opS2 = ""
 opS3 = ""
-opModule = ""
+opModule = "True"
 
 #---------------------------------------------------------------------------------------------------------------------------------
 sample = 'sample3.jpg'
@@ -46,11 +46,9 @@ readSkills = rightSide
 skillList = nameReader.readtext(readSkills)
 skillList2 = nameReader.readtext(readSkills, detail = 0)
 
-plt.imshow(nameThresh)
-plt.waitforbuttonpress()
-print(nameList)
+print(skillList2)
 print('')
-print(nameList2)
+# print(nameList2)
 
 
 
@@ -102,8 +100,8 @@ else:
 	croppedPromo = rightSide[promoDim[0][1]:promoDim[1][1], promoDim[0][0]:promoDim[1][0]]
 	croppedPromo = cv.cvtColor(croppedPromo, cv.COLOR_BGR2GRAY)
 
-	for e in os.listdir('elite_icon'):
-		elite = cv.imread('elite_icon/' + e, 0)
+	for e in os.listdir('image_matching/elite_icon'):
+		elite = cv.imread('image_matching/elite_icon/' + e, 0)
 
 		for x in range(-5, 5):
 			eResize = cv.resize(elite, (0, 0), fx = 1 - 0.1 * x, fy = 1 - 0.1 * x)
@@ -195,8 +193,8 @@ else:
 	croppedPot = rightSide[potDim[0][1]:potDim[1][1], potDim[0][0]:potDim[1][0]]
 	croppedPot = cv.cvtColor(croppedPot, cv.COLOR_BGR2GRAY)
 
-	for p in os.listdir('potential_icon'):
-		potential = cv.imread('potential_icon/' + p, 0)
+	for p in os.listdir('image_matching/potential_icon'):
+		potential = cv.imread('image_matching/potential_icon/' + p, 0)
 
 		for x in range(-5, 5):
 			pResize = cv.resize(potential, (0, 0), fx = 1 - 0.1 * x, fy = 1 - 0.1 * x)
@@ -263,6 +261,35 @@ elif opRarity == 2 and opPromotion == 'E0':
 elif opRarity == 1 or opRarity == 0:
 	opPromotion = 'E0'
 	maxLevel = 30
+
+# READ MODULE--------------------------------------------------------------------------------------------------
+
+modProb = 0
+modDim = [0, 0]
+
+for (bbox, text, prob) in skillList:
+	(tl, tr, br, bl) = bbox
+
+	if modProb < fuzz.ratio(text, 'Module'):
+		modProb = fuzz.ratio(text, 'Module')
+		modDim = [(int(tl[0] + 20), int(tl[1]) - 80), (int(br[0] + 170), int(br[1] + 80))]
+
+croppedMod = rightSide[modDim[0][1]:modDim[1][1], modDim[0][0]:modDim[1][0]]
+croppedMod = cv.cvtColor(croppedMod, cv.COLOR_BGR2GRAY)
+
+noMod = cv.imread('image_matching/module_icon/nomodule.jpg', 0)
+
+for x in range(-5, 5):
+	modResize = cv.resize(noMod, (0, 0), fx = 1 - 0.1 * x, fy = 1 - 0.1 * x)
+
+	if modResize.shape[0] < croppedMod.shape[0] and modResize.shape[1] < croppedMod.shape[1]:
+		modComp = cv.matchTemplate(croppedMod, modResize, cv.TM_CCORR_NORMED)
+		print(np.amax(modComp))
+
+		if np.amax(modComp) > 0.95:
+			opModule = 'False'
+
+print(opModule)
 
 #---------------------------------------------------------------------------------------------------------------------------------
 

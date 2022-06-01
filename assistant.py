@@ -29,8 +29,8 @@ def arkAssist(input, nameReader):
 
 	sample = input
 
-	roster = cv.imread('input/' + sample, 0)
-	rosterCopy = cv.imread('input/' + sample)
+	roster = cv.imread('fotometta_input/' + sample, 0)
+	rosterCopy = cv.imread('fotometta_input/' + sample)
 	faceRef = cv.imread('operator_icon/chenskin1.jpg', 0)
 	faceMatch = 0
 
@@ -46,24 +46,18 @@ def arkAssist(input, nameReader):
 	readSkills = rightSide
 	skillList = nameReader.readtext(readSkills)
 
-	# plt.imshow(rightSide)
-	# plt.waitforbuttonpress()
-
 #--------------------------------------------------------------------------------------------------------------
 
-	opjson = open('json_files/character_table.json', encoding = "utf8")
-	datajson = json.load(opjson)
-	keyList = list(datajson)
+	datajson = json.load(open('json_files/character_table.json', encoding = "utf8"))
 	opList = []
 	rarityList = []
 	nameMatch = 0
 	rarityIndex = 0
 
-	for key in keyList:
-		opList.append(datajson[key]['name'])
-		rarityList.append(datajson[key]['rarity'])
-
-	opjson.close()
+	for key in list(datajson):
+		if datajson[key]['subProfessionId'] != 'notchar1' and datajson[key]['subProfessionId'] != 'notchar2':
+			opList.append(datajson[key]['name'])
+			rarityList.append(datajson[key]['rarity'])
 
 	for name in nameList:
 		if name != 'Ranged' and name != 'Range' and name != 'DPS' and name != 'Slow' and name != 'Trust':
@@ -81,7 +75,7 @@ def arkAssist(input, nameReader):
 				nameMatch = int(compare[1])
 				opName = compare[0]
 
-	for key in keyList:
+	for key in list(datajson):
 		if datajson[key]['name'] == opName:
 			opRarity = datajson[key]['rarity']
 
@@ -103,8 +97,8 @@ def arkAssist(input, nameReader):
 		croppedPromo = rightSide[promoDim[0][1]:promoDim[1][1], promoDim[0][0]:promoDim[1][0]]
 		croppedPromo = cv.cvtColor(croppedPromo, cv.COLOR_BGR2GRAY)
 
-		for e in os.listdir('elite_icon'):
-			elite = cv.imread('elite_icon/' + e, 0)
+		for e in os.listdir('image_matching/elite_icon'):
+			elite = cv.imread('image_matching/elite_icon/' + e, 0)
 
 			for x in range(-5, 5):
 				eResize = cv.resize(elite, (0, 0), fx = 1 - 0.1 * x, fy = 1 - 0.1 * x)
@@ -131,11 +125,23 @@ def arkAssist(input, nameReader):
 	croppedRank = rightSide[rankDim[0][1]:rankDim[1][1], rankDim[0][0]:rankDim[1][0]]
 	ret, rankThresh = cv.threshold(croppedRank, 127, 255, cv.THRESH_BINARY)
 	tessImg = cv.cvtColor(rankThresh, cv.COLOR_BGR2GRAY)
+	tessImg2 = cv.cvtColor(croppedRank, cv.COLOR_BGR2GRAY)
 	skillRank = pytesseract.image_to_string(tessImg, config = '')
+	skillRank2 = pytesseract.image_to_string(tessImg2, config = '')
 	skillRank = skillRank.rstrip()
+	skillRank2 = skillRank2.rstrip()
 
-	if skillRank == 'RANK ]' or skillRank == 'RANK |':
+	if skillRank[-1] == ']' or skillRank[-1] == '|':
 		skillRank = 'RANK 1'
+
+	if skillRank2[-1] == ']' or skillRank2[-1] == '|':
+		skillRank2 = 'RANK 1'
+
+	if any(char.isdigit() for char in skillRank2) == True and any(char.isdigit() for char in skillRank) == False:
+		skillRank = skillRank2
+	elif any(char.isdigit() for char in skillRank2) == True and any(char.isdigit() for char in skillRank) == True:
+		if int(skillRank2[-1]) > int(skillRank[-1]):
+			skillRank = skillRank2
 
 	if skillRank == 'RANK 7' and opRarity > 2 and opPromotion == 'E2':
 		croppedMastery = rightSide[(rankDim[0][1] - 20):(rankDim[1][1] + 20), (rankDim[0][0] + 80):(rankDim[1][0] + 240)]
@@ -148,8 +154,8 @@ def arkAssist(input, nameReader):
 		s1Match, s2Match, s3Match = 0, 0, 0
 		s1m, s2m, s3m = '', '', ''
 
-		for m in os.listdir('mastery_icon'):
-			mastery = cv.imread('mastery_icon/' + m, 0)
+		for m in os.listdir('image_matching/mastery_icon'):
+			mastery = cv.imread('image_matching/mastery_icon/' + m, 0)
 
 			for x in range(-5, 5):
 				mResize = cv.resize(mastery, (0, 0), fx = 1 - 0.1 * x, fy = 1 - 0.1 * x)
@@ -193,8 +199,8 @@ def arkAssist(input, nameReader):
 		croppedPot = rightSide[potDim[0][1]:potDim[1][1], potDim[0][0]:potDim[1][0]]
 		croppedPot = cv.cvtColor(croppedPot, cv.COLOR_BGR2GRAY)
 
-		for p in os.listdir('potential_icon'):
-			potential = cv.imread('potential_icon/' + p, 0)
+		for p in os.listdir('image_matching/potential_icon'):
+			potential = cv.imread('image_matching/potential_icon/' + p, 0)
 
 			for x in range(-5, 5):
 				pResize = cv.resize(potential, (0, 0), fx = 1 - 0.1 * x, fy = 1 - 0.1 * x)
@@ -256,16 +262,65 @@ def arkAssist(input, nameReader):
 		maxLevel = 55
 	elif opRarity == 5 and opPromotion == 'E0' or opRarity == 4 and opPromotion == 'E0':
 		maxLevel = 50
+	elif opRarity == 3 and opPromotion == 'E0':
+		maxLevel = 45
 	elif opRarity == 2 and opPromotion == 'E0':
 		maxLevel = 40
 	elif opRarity == 1 or opRarity == 0:
 		opPromotion = 'E0'
 		maxLevel = 30
 
-#--------------------------------------------------------------------------------------------------------------
+# READ MODULE--------------------------------------------------------------------------------------------------
 
-	opFields = ["Name", "Rarity", "Level", "Promotion", "Potential", "Skill", "S1", "S2", "S3"]
-	opInput = [opName, str(opRarity + 1), str(opLevel) + "/" + str(maxLevel), opPromotion, str(opPotential), skillRank, opS1, opS2, opS3]
+	modProb, modtemp = 0, ''
+	modDim = [0, 0]
+
+	for (bbox, text, prob) in skillList:
+		(tl, tr, br, bl) = bbox
+
+		if modProb < fuzz.ratio(text, 'Module'):
+			modProb = fuzz.ratio(text, 'Module')
+			modDim = [(int(tl[0] + 20), int(tl[1]) - 80), (int(br[0] + 170), int(br[1] + 80))]
+
+	croppedMod = rightSide[modDim[0][1]:modDim[1][1], modDim[0][0]:modDim[1][0]]
+	croppedMod = cv.cvtColor(croppedMod, cv.COLOR_BGR2GRAY)
+
+	modProb = 0
+
+	# for x in range(-5, 5):
+	# 	modResize = cv.resize(noMod, (0, 0), fx = 1 - 0.1 * x, fy = 1 - 0.1 * x)
+
+	# 	if modResize.shape[0] < croppedMod.shape[0] and modResize.shape[1] < croppedMod.shape[1]:
+	# 		modComp = cv.matchTemplate(croppedMod, modResize, cv.TM_CCORR_NORMED)
+
+	# 		if np.amax(modComp) > modProb:
+	# 			modProb = np.amax(modComp)
+
+
+	for m in os.listdir('image_matching/module_icon'):
+		modImg = cv.imread('image_matching/module_icon/' + m, 0)
+
+		for x in range(-5, 5):
+			modResize = cv.resize(modImg, (0, 0), fx = 1 - 0.1 * x, fy = 1 - 0.1 * x)
+
+			if modResize.shape[0] < croppedMod.shape[0] and modResize.shape[1] < croppedMod.shape[1]:
+				modComp = cv.matchTemplate(croppedMod, modResize, cv.TM_CCORR_NORMED)
+
+				if np.amax(modComp) > modProb:
+					modProb = np.amax(modComp)
+					modtemp = m
+
+	print(modtemp)
+
+	if modtemp == 'originalmodule.jpg' or modtemp == 'nomodule.jpg':
+		opModule = 'None'
+	else:
+		opModule = 'True'
+
+# OUTPUT-------------------------------------------------------------------------------------------------------
+
+	opFields = ["Name", "Rarity", "Level", "Promotion", "Potential", "Skill", "S1", "S2", "S3", 'Module']
+	opInput = [opName, str(opRarity + 1), str(opLevel) + "/" + str(maxLevel), opPromotion, str(opPotential), skillRank, opS1, opS2, opS3, opModule]
 
 	if skillRank == "RANK 7" and opRarity == 4:
 		opInput[8] = ""
@@ -283,8 +338,8 @@ def arkAssist(input, nameReader):
 #--------------------------------------------------------------------------------------------------------------
 
 def resizeRoster(selectedFolder):
-	for i in os.listdir('input'):
-		os.remove(os.path.join('input', i))
+	for i in os.listdir('fotometta_input'):
+		os.remove(os.path.join('fotometta_input', i))
 
 	reso = 1500
 	index = 1
@@ -292,7 +347,7 @@ def resizeRoster(selectedFolder):
 	for rawImg in os.listdir(selectedFolder):
 		original = cv.imread(selectedFolder + '/' + rawImg)
 		oDim = original.shape
-		destination = 'input/sample' + str(index) + '.jpg'
+		destination = 'fotometta_input/sample' + str(index) + '.jpg'
 		index = index + 1
 
 		if oDim[1] > reso:
@@ -400,17 +455,18 @@ def removeDupes(d):
 			for entry2 in list(newRoster):
 				if newRoster[entry2]['Name'] == d[entry]['Name']:
 					isDupe = True
+					newRoster[entry2] = d[entry]
 
-					if newRoster[entry2]['Promotion'] < d[entry]['Promotion']:
-						newRoster[entry2] = d[entry]
-					elif newRoster[entry2]['Promotion'] == d[entry]['Promotion'] and newRoster[entry2]['Potential'] < d[entry]['Potential']:
-						newRoster[entry2] = d[entry]
-					elif newRoster[entry2]['Promotion'] == d[entry]['Promotion'] and newRoster[entry2]['Potential'] == d[entry]['Potential'] and int(newRoster[entry2]['Level'][:-3]) < int(d[entry]['Level'][:-3]):
-						newRoster[entry2] = d[entry]
-					elif newRoster[entry2]['Promotion'] == d[entry]['Promotion'] and newRoster[entry2]['Potential'] == d[entry]['Potential'] and int(newRoster[entry2]['Level'][:-3]) == int(d[entry]['Level'][:-3]) and newRoster[entry2]['Skill'] < d[entry]['Skill']:
-						newRoster[entry2] = d[entry]
-					elif newRoster[entry2]['Promotion'] == d[entry]['Promotion'] and newRoster[entry2]['Potential'] == d[entry]['Potential'] and int(newRoster[entry2]['Level'][:-3]) == int(d[entry]['Level'][:-3]) and newRoster[entry2]['Skill'] == d[entry]['Skill'] and (newRoster[entry2]['S1'] + newRoster[entry2]['S2'] + newRoster[entry2]['S3']) < (d[entry]['S1'] + d[entry]['S2'] + d[entry]['S3']):
-						newRoster[entry2] = d[entry]
+					# if newRoster[entry2]['Promotion'] < d[entry]['Promotion']:
+					# 	newRoster[entry2] = d[entry]
+					# elif newRoster[entry2]['Promotion'] == d[entry]['Promotion'] and newRoster[entry2]['Potential'] < d[entry]['Potential']:
+					# 	newRoster[entry2] = d[entry]
+					# elif newRoster[entry2]['Promotion'] == d[entry]['Promotion'] and newRoster[entry2]['Potential'] == d[entry]['Potential'] and int(newRoster[entry2]['Level'][:-3]) < int(d[entry]['Level'][:-3]):
+					# 	newRoster[entry2] = d[entry]
+					# elif newRoster[entry2]['Promotion'] == d[entry]['Promotion'] and newRoster[entry2]['Potential'] == d[entry]['Potential'] and int(newRoster[entry2]['Level'][:-3]) == int(d[entry]['Level'][:-3]) and newRoster[entry2]['Skill'] < d[entry]['Skill']:
+					# 	newRoster[entry2] = d[entry]
+					# elif newRoster[entry2]['Promotion'] == d[entry]['Promotion'] and newRoster[entry2]['Potential'] == d[entry]['Potential'] and int(newRoster[entry2]['Level'][:-3]) == int(d[entry]['Level'][:-3]) and newRoster[entry2]['Skill'] == d[entry]['Skill'] and (newRoster[entry2]['S1'] + newRoster[entry2]['S2'] + newRoster[entry2]['S3']) < (d[entry]['S1'] + d[entry]['S2'] + d[entry]['S3']):
+					# 	newRoster[entry2] = d[entry]
 
 			if isDupe == False:
 				newRoster[entry] = d[entry]
@@ -422,10 +478,31 @@ def removeDupes(d):
 #--------------------------------------------------------------------------------------------------------------
 
 def arrToDict(a):
+	datajson = json.load(open('json_files/character_table.json', encoding = "utf8"))
+	modulejson = json.load(open('json_files/uniequip_table.json', encoding = "utf8"))
 	finalData = {}
 
 	for i in range(1, len(a) + 1):
-		finalData['sample' + str(i)] = a[i - 1]
+		charCode = ''
+		modCode = ''
+
+		for key, value in datajson.items():
+			if datajson[key]['name'] == a[i - 1]['Name']:
+				finalData[key] = a[i - 1]
+				charCode = key
+				break;
+
+		for key, value in modulejson.items():
+			if key != 'missionList' and key != 'subProfDict' and key != 'charEquip':
+				for key2, value2 in modulejson[key].items():
+					if modulejson[key][key2]['charId'] == charCode:
+						if a[i - 1]['Module'] == 'None':
+							a[i - 1]['Module'] = 'original'
+						elif a[i - 1]['Module'] == 'True' and modulejson[key][key2]['typeIcon'] != 'original':
+							a[i - 1]['Module'] = modulejson[key][key2]['typeIcon']
+
+			if a[i - 1]['Module'] != 'None' and a[i - 1]['Module'] != 'True':
+				break;
 
 	return finalData
 
@@ -434,6 +511,7 @@ def arrToDict(a):
 def assembleDict(d):
 	finalData = {}
 	a = []
+	b = []
 	a = removeDupes(d)
 	finalData = arrToDict(a)
 	
