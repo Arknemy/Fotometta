@@ -21,22 +21,31 @@ style = open('ui_asset/darkorange.qss').read()
 font = QFont('Roboto', 10)
 
 datajson = json.load(open('json_files/character_table.json', encoding = "utf8"))
+modulejson = json.load(open('json_files/uniequip_table.json', encoding = "utf8"))
 opList = []
 rarityList = []
 userRoster = []
 
-for key in list(datajson):
-	if datajson[key]['subProfessionId'] != 'notchar1' and datajson[key]['subProfessionId'] != 'notchar2':
-		opList.append(datajson[key]['name'])
-		rarityList.append(datajson[key]['rarity'])
+#--------------------------------------------------------------------------------------------------------------
+
+def initOpList():
+	opList.clear()
+	rarityList.clear()
+
+	for key in list(datajson):
+		if datajson[key]['subProfessionId'] != 'notchar1' and datajson[key]['subProfessionId'] != 'notchar2':
+			opList.append(datajson[key]['name'])
+			rarityList.append(datajson[key]['rarity'])
 
 #--------------------------------------------------------------------------------------------------------------
 
 class addOpWindow(QMainWindow):
+	submitted = QtCore.pyqtSignal(str)
+
 	def __init__(self):
 		super().__init__()
 		self.setStyleSheet(style)
-		# self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+		self.setWindowFlags(Qt.WindowStaysOnTopHint)
 		
 	def getNewOP(self, message):
 		newOp = message.lower()
@@ -45,32 +54,55 @@ class addOpWindow(QMainWindow):
 		self.opRarity = 0
 		self.opPromotion = 'E0'
 		self.opPotential = 1
-		self.opLevel = 0
-		self.skillRank = ""
+		self.opLevel = 1
+		self.skillRank = "RANK 1"
 		self.opS1 = ""
 		self.opS2 = ""
 		self.opS3 = ""
-		self.opModule = ""
+		self.opModule = "None"
 
-		newOpData = []
+		self.newOpData = []
+		self.hasModule = []
+		self.modName = []
+
+		with open('fotometta_output/output_dict.txt', 'r+') as file:
+			self.savedData = json.loads(file.read())
 
 		for key in list(datajson):
 			if datajson[key]['name'].lower() == newOp:
-				newOpData = datajson[key]
+				self.newOpData = datajson[key]
 				self.opName = datajson[key]['name']
 				self.opRarity = datajson[key]['rarity']
 
-		if self.opRarity == 5 or self.opRarity == 4:
-			self.maxLevel = 50
-		elif self.opRarity == 3:
-			self.maxLevel = 45
-		elif self.opRarity == 2:
-			self.maxLevel = 40
-		else:
-			self.maxLevel = 30
+		for key in list(self.savedData):
+			if self.opName == self.savedData[key]['Name']:
+				self.opPromotion = self.savedData[key]['Promotion']
+				self.opLevel = int(self.savedData[key]['Level'].split('/')[0])
+				self.opPotential = int(self.savedData[key]['Potential'])
+				self.skillRank = self.savedData[key]['Skill']
+				self.opS1 = self.savedData[key]['S1']
+				self.opS2 = self.savedData[key]['S2']
+				self.opS3 = self.savedData[key]['S3']
+				self.opModule = self.savedData[key]['Module']
+				break;
+
+		for key, value in modulejson.items():
+		    if key != 'missionList' and key != 'subProfDict' and key != 'charEquip':
+		        for key2, value2 in modulejson[key].items():
+		            if modulejson[key][key2]['uniEquipIcon'] == 'original':
+		                self.hasModule.append(modulejson[key][key2]['uniEquipName'][:-8])
+		            elif modulejson[key][key2]['uniEquipIcon'] != 'original':
+		                self.modName.append(modulejson[key][key2]['typeIcon'])
+
+		self.maxLevel = getMaxLevel(self.opPromotion, int(self.opRarity))
+
+		if self.opPromotion == 'E2':
+			newOp = self.opName.lower() + '2'
+		else: 
+			newOp = self.opName.lower() + '1'
 
 		self.opImage = QtWidgets.QLabel(self)
-		self.icon = QPixmap('ui_asset/op_icon/' + newOp + '1.png').scaled(90, 90, QtCore.Qt.KeepAspectRatio, Qt.SmoothTransformation)
+		self.icon = QPixmap('ui_asset/op_icon/' + newOp + '.png').scaled(90, 90, QtCore.Qt.KeepAspectRatio, Qt.SmoothTransformation)
 		self.opImage.resize(self.icon.width() + 10, 100)
 		self.opImage.setAlignment(Qt.AlignCenter)
 		self.opImage.setStyleSheet("background-color: #282828")
@@ -78,25 +110,20 @@ class addOpWindow(QMainWindow):
 		self.opImage.move(10, 12)
 
 		stars = ''
-
-		for i in range(0, newOpData['rarity'] + 1):
+		for i in range(0, self.newOpData['rarity'] + 1):
 			stars += '★'
 
-		self.opRarityLabel = QtWidgets.QLabel(self)
-		self.opRarityLabel.setText(stars)
+		self.opRarityLabel = QtWidgets.QLabel(stars, self)
 		self.opRarityLabel.setAlignment(Qt.AlignCenter)
-		self.opRarityLabel.resize(90, 20)
-		self.opRarityLabel.move(15, 115)
+		self.opRarityLabel.setGeometry(15, 115, 90, 20)
 
-		self.opNameLabel = QtWidgets.QLabel(self)
+		self.opNameLabel = QtWidgets.QLabel(self.opName, self)
 		self.opNameLabel.setFont(QFont('Roboto', 13))
-		self.opNameLabel.setText(self.opName)
 		self.opNameLabel.adjustSize()
-		# print(self.opNameLabel.size().width()) # IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT 
 		self.opNameLabel.move(125, 53)
 
 		self.eliteButton = QtWidgets.QPushButton(self)
-		self.eliteButton.setStyleSheet("background-image : url(ui_asset/button_icon/e0.png);")
+		self.eliteButton.setStyleSheet("background-image : url(ui_asset/button_icon/" + self.opPromotion.lower() + ".png);")
 		self.eliteButton.setGeometry(125 + self.opNameLabel.size().width() + 13, 13, 70, 70)
 		self.eliteButton.clicked.connect(self.updateElite)
 
@@ -110,20 +137,30 @@ class addOpWindow(QMainWindow):
 		self.levelCombo.setGeometry(125 + self.opNameLabel.size().width() + 39, 93, 40, 29)
 		for i in range(1, self.maxLevel + 1):
 			self.levelCombo.addItem(str(i))
+		self.levelCombo.setCurrentIndex(self.opLevel - 1)
 		self.levelCombo.activated[str].connect(self.updateLevel)  
 
 		self.s1Button = QtWidgets.QPushButton(self)
-		self.s1Button.setStyleSheet("background-image : url(ui_asset/button_icon/m0.png);")
+		if self.opS1 == '':
+			self.s1Button.setStyleSheet("background-image : url(ui_asset/button_icon/m0.png);")
+		else:
+			self.s1Button.setStyleSheet("background-image : url(ui_asset/button_icon/" + self.opS1.lower() + ".png);")
 		self.s1Button.setGeometry(125 + self.opNameLabel.size().width() + 95, 72, 50, 50)
 		self.s1Button.clicked.connect(self.updateS1)
 
 		self.s2Button = QtWidgets.QPushButton(self)
-		self.s2Button.setStyleSheet("background-image : url(ui_asset/button_icon/m0.png);")
+		if self.opS2 == '':
+			self.s2Button.setStyleSheet("background-image : url(ui_asset/button_icon/m0.png);")
+		else:
+			self.s2Button.setStyleSheet("background-image : url(ui_asset/button_icon/" + self.opS2.lower() + ".png);")
 		self.s2Button.setGeometry(125 + self.opNameLabel.size().width() + 155, 72, 50, 50)
 		self.s2Button.clicked.connect(self.updateS2)
 
 		self.s3Button = QtWidgets.QPushButton(self)
-		self.s3Button.setStyleSheet("background-image : url(ui_asset/button_icon/m0.png);")
+		if self.opS3 == '':
+			self.s3Button.setStyleSheet("background-image : url(ui_asset/button_icon/m0.png);")
+		else:
+			self.s3Button.setStyleSheet("background-image : url(ui_asset/button_icon/" + self.opS3.lower() + ".png);")
 		self.s3Button.setGeometry(125 + self.opNameLabel.size().width() + 215, 72, 50, 50)
 		self.s3Button.clicked.connect(self.updateS3)
 
@@ -131,31 +168,63 @@ class addOpWindow(QMainWindow):
 		self.s2Button.setEnabled(False)
 		self.s3Button.setEnabled(False)
 
+		if self.skillRank == 'RANK 7' and self.opPromotion == 'E2' and self.skillRank == 'RANK 7':
+			self.s1Button.setEnabled(True)
+			self.s2Button.setEnabled(True)
+			self.s3Button.setEnabled(True)
+
+		self.skillRankLabel = QtWidgets.QLabel(self)
+		self.skillRankLabel.setFont(QFont('Roboto', 9))
+		self.skillRankLabel.setText('Skill Rank')
+		self.skillRankLabel.adjustSize()
+		self.skillRankLabel.move(125 + self.opNameLabel.size().width() + 96, 15)
+
+		self.skillRankCombo = QtWidgets.QComboBox(self)
+		self.skillRankCombo.setGeometry(125 + self.opNameLabel.size().width() + 95, 33, 52, 30)
+		for i in range(1, 5):
+			self.skillRankCombo.addItem(str(i))
+		if self.opPromotion == 'E1' or self.opPromotion == 'E2':
+			for i in range(5, 8):
+				self.skillRankCombo.addItem(str(i))
+		self.skillRankCombo.setCurrentIndex(int(self.skillRank[-1]) - 1)
+		self.skillRankCombo.activated[str].connect(self.updateSkillRank)
+
+		if self.opRarity == 0 or self.opRarity == 1:
+			self.skillRankCombo.setEnabled(False)
+
 		self.potentialButton = QtWidgets.QPushButton(self)
-		self.potentialButton.setStyleSheet("background-image : url(ui_asset/button_icon/p1.png);")
-		self.potentialButton.setGeometry(125 + self.opNameLabel.size().width() + 95, 13, 50, 50)
+		self.potentialButton.setStyleSheet("background-image : url(ui_asset/button_icon/p" + str(self.opPotential) + ".png);")
+		self.potentialButton.setGeometry(125 + self.opNameLabel.size().width() + 155, 13, 50, 50)
 		self.potentialButton.clicked.connect(self.updatePotential)
 
+		self.moduleButton = QtWidgets.QPushButton(self)
+		self.moduleButton.setStyleSheet("background-image : url(ui_asset/button_icon/original.png);")
+		if self.opModule != 'None':
+			self.moduleButton.setStyleSheet("background-image : url(ui_asset/button_icon/" + self.opModule + ".png);")
+		self.moduleButton.setGeometry(125 + self.opNameLabel.size().width() + 215, 13, 50, 50)
+		self.moduleButton.clicked.connect(self.updateModule)
+		self.moduleButton.setEnabled(False)
+		if self.opRarity == 3 and int(self.opLevel) >= 40:
+			self.moduleButton.setEnabled(True)
+		elif self.opRarity == 4 and int(self.opLevel) >= 50:
+			self.moduleButton.setEnabled(True)
+		elif self.opRarity == 5 and int(self.opLevel) >= 60:
+			self.moduleButton.setEnabled(True)
 
+		self.confirmButton = QtWidgets.QPushButton(self)
+		self.confirmButton.setText('Confirm')
+		self.confirmButton.setGeometry(125 + self.opNameLabel.size().width() + 285, 13, 70, 109)
+		self.confirmButton.clicked.connect(self.confirmOp)
+		self.confirmButton.clicked.connect(self.submitExit)
 
-
-
-		self.setGeometry(0, 0, 500 + self.opNameLabel.size().width() , 140)
-		self.setFixedSize(500 + self.opNameLabel.size().width(), 140)
+		self.setGeometry(0, 0, 493 + self.opNameLabel.size().width() , 140)
+		self.setFixedSize(493 + self.opNameLabel.size().width(), 140)
 		self.setWindowTitle('Edit Selection')
 		self.setWindowIcon(QtGui.QIcon('ui_asset/taskbaricon.ico'))
 		qtRec = self.frameGeometry()
 		centre = QDesktopWidget().availableGeometry().center()
 		qtRec.moveCenter(centre)
 		self.move(qtRec.topLeft())
-
-
-
-
-		# opFields = ["Name", "Rarity", "Level", "Promotion", "Potential", "Skill", "S1", "S2", "S3", 'Module']
-		# opInput = [opName, str(opRarity + 1), str(opLevel) + "/" + str(maxLevel), opPromotion, str(opPotential), skillRank, opS1, opS2, opS3, opModule]
-
-		# d = dict(zip(opFields, opInput))
 
 	def updateElite(self):
 		if self.opPromotion == 'E0' and self.opRarity > 1:
@@ -180,45 +249,29 @@ class addOpWindow(QMainWindow):
 			self.opImage.setPixmap(self.icon)
 			self.opImage.update()
 
-		if self.opPromotion == 'E0':
-			if self.opRarity == 5 or self.opRarity == 4:
-				self.maxLevel = 50
-			elif self.opRarity == 3:
-				self.maxLevel = 45
-			elif self.opRarity == 2:
-				self.maxLevel = 40
-			else:
-				self.maxLevel = 30
-		elif self.opPromotion == 'E1':
-			if self.opRarity == 5:
-				self.maxLevel = 80
-			elif self.opRarity == 3:
-				self.maxLevel = 70
-			elif self.opRarity == 3:
-				self.maxLevel = 60
-			elif self.opRarity == 2:
-				self.maxLevel = 55
-			else:
-				self.maxLevel = 30
-		elif self.opPromotion == 'E2':
-			if self.opRarity == 5:
-				self.maxLevel = 90
-			elif self.opRarity == 3:
-				self.maxLevel = 80
-			elif self.opRarity == 3:
-				self.maxLevel = 70
-			elif self.opRarity == 2:
-				self.maxLevel = 55
-			else:
-				self.maxLevel = 30
+		self.maxLevel = getMaxLevel(self.opPromotion, int(self.opRarity))
 
 		self.levelCombo.clear()
-
 		for i in range(1, self.maxLevel + 1):
 			self.levelCombo.addItem(str(i))
-
 		self.levelCombo.update()
 		self.opLevel = 1
+
+		currentRank = self.skillRank[-1]
+
+		if self.opPromotion == 'E1' or self.opPromotion == 'E2':
+			self.skillRankCombo.clear()
+			for i in range(1, 8):
+				self.skillRankCombo.addItem(str(i))
+			self.skillRankCombo.setCurrentIndex(int(currentRank) - 1)
+		else:
+			self.skillRankCombo.clear()
+			for i in range(1, 5):
+				self.skillRankCombo.addItem(str(i))
+			if int(currentRank) > 4:
+				currentRank = '4'
+				self.skillRank = 'RANK 4'
+				self.skillRankCombo.setCurrentIndex(int(currentRank) - 1)
 
 		self.s1Button.setEnabled(False)
 		self.s2Button.setEnabled(False)
@@ -230,26 +283,95 @@ class addOpWindow(QMainWindow):
 		self.opS2 = ''
 		self.opS3 = ''
 
-		if self.opPromotion == 'E2':
+		if self.skillRank == 'RANK 7' and self.opPromotion == 'E2':
 			if self.opRarity == 5:
 				self.s1Button.setEnabled(True)
 				self.s2Button.setEnabled(True)
 				self.s3Button.setEnabled(True)
+				self.opS1 = 'M0'
+				self.opS2 = 'M0'
+				self.opS3 = 'M0'
 			elif self.opRarity == 4 or self.opRarity == 3:
 				self.s1Button.setEnabled(True)
 				self.s2Button.setEnabled(True)
+				self.opS1 = 'M0'
+				self.opS2 = 'M0'
 
 		self.s1Button.update()
 		self.s2Button.update()
 		self.s3Button.update()
 
+		if self.opName in self.hasModule and self.opPromotion == 'E2':
+			if self.opRarity == 3 and int(self.opLevel) >= 40:
+				self.moduleButton.setEnabled(True)
+			elif self.opRarity == 4 and int(self.opLevel) >= 50:
+				self.moduleButton.setEnabled(True)
+			elif self.opRarity == 5 and int(self.opLevel) >= 60:
+				self.moduleButton.setEnabled(True)
+			else:
+				self.moduleButton.setEnabled(False)
+				self.moduleButton.setStyleSheet("background-image : url(ui_asset/button_icon/original.png);")
+				self.opModule = 'None'
+		else:
+			self.moduleButton.setEnabled(False)
+			self.moduleButton.setStyleSheet("background-image : url(ui_asset/button_icon/original.png);")
+			self.opModule = 'None'
+
+		self.moduleButton.update()
 
 	def updateLevel(self, text):
 		self.opLevel = text
-		print(self.opLevel)
+
+		if self.opName in self.hasModule and self.opPromotion == 'E2':
+			if self.opRarity == 3 and int(self.opLevel) >= 40:
+				self.moduleButton.setEnabled(True)
+			elif self.opRarity == 4 and int(self.opLevel) >= 50:
+				self.moduleButton.setEnabled(True)
+			elif self.opRarity == 5 and int(self.opLevel) >= 60:
+				self.moduleButton.setEnabled(True)
+			else:
+				self.moduleButton.setEnabled(False)
+				self.moduleButton.setStyleSheet("background-image : url(ui_asset/button_icon/original.png);")
+				self.opModule = 'None'
+		else:
+			self.moduleButton.setEnabled(False)
+			self.moduleButton.setStyleSheet("background-image : url(ui_asset/button_icon/original.png);")
+			self.opModule = 'None'
+
+		self.moduleButton.update()
+
+	def updateSkillRank(self, text):
+		self.skillRank = 'RANK ' + str(text)
+		self.s1Button.setEnabled(False)
+		self.s2Button.setEnabled(False)
+		self.s3Button.setEnabled(False)
+		self.s1Button.setStyleSheet("background-image : url(ui_asset/button_icon/m0.png);")
+		self.s2Button.setStyleSheet("background-image : url(ui_asset/button_icon/m0.png);")
+		self.s3Button.setStyleSheet("background-image : url(ui_asset/button_icon/m0.png);")
+		self.opS1 = ''
+		self.opS2 = ''
+		self.opS3 = ''
+
+		if self.skillRank == 'RANK 7' and self.opPromotion == 'E2':
+			if self.opRarity == 5:
+				self.s1Button.setEnabled(True)
+				self.s2Button.setEnabled(True)
+				self.s3Button.setEnabled(True)
+				self.opS1 = 'M0'
+				self.opS2 = 'M0'
+				self.opS3 = 'M0'
+			elif self.opRarity == 4 or self.opRarity == 3:
+				self.s1Button.setEnabled(True)
+				self.s2Button.setEnabled(True)
+				self.opS1 = 'M0'
+				self.opS2 = 'M0'
+
+		self.s1Button.update()
+		self.s2Button.update()
+		self.s3Button.update()
 
 	def updateS1(self):
-		if self.opS1 == '':
+		if self.opS1 == 'M0':
 			self.s1Button.setStyleSheet("background-image : url(ui_asset/button_icon/m1.png);")
 			self.opS1 = 'M1'
 		elif self.opS1 == 'M1':
@@ -260,12 +382,12 @@ class addOpWindow(QMainWindow):
 			self.opS1 = 'M3'
 		else:
 			self.s1Button.setStyleSheet("background-image : url(ui_asset/button_icon/m0.png);")
-			self.opS1 = ''
+			self.opS1 = 'M0'
 
 		self.s1Button.update()
 
 	def updateS2(self):
-		if self.opS2 == '':
+		if self.opS2 == 'M0':
 			self.s2Button.setStyleSheet("background-image : url(ui_asset/button_icon/m1.png);")
 			self.opS2 = 'M1'
 		elif self.opS2 == 'M1':
@@ -276,12 +398,12 @@ class addOpWindow(QMainWindow):
 			self.opS2 = 'M3'
 		else:
 			self.s2Button.setStyleSheet("background-image : url(ui_asset/button_icon/m0.png);")
-			self.opS2 = ''
+			self.opS2 = 'M0'
 
 		self.s2Button.update()
 
 	def updateS3(self):
-		if self.opS3 == '':
+		if self.opS3 == 'M0':
 			self.s3Button.setStyleSheet("background-image : url(ui_asset/button_icon/m1.png);")
 			self.opS3 = 'M1'
 		elif self.opS3 == 'M1':
@@ -292,7 +414,7 @@ class addOpWindow(QMainWindow):
 			self.opS3 = 'M3'
 		else:
 			self.s3Button.setStyleSheet("background-image : url(ui_asset/button_icon/m0.png);")
-			self.opS3 = ''
+			self.opS3 = 'M0'
 
 		self.s3Button.update()
 
@@ -307,27 +429,72 @@ class addOpWindow(QMainWindow):
 
 		self.potentialButton.update()
 
+	def updateModule(self):
+		if self.opModule == 'None' and self.opName in self.hasModule or self.opModule == 'original':
+			for i in range(0, len(self.hasModule)):
+				if self.hasModule[i] == self.opName:
+					self.moduleButton.setStyleSheet("background-image : url(ui_asset/button_icon/" + self.modName[i] + ".png);")
+			
+			self.opModule = 'True'
+		else:
+			self.moduleButton.setStyleSheet("background-image : url(ui_asset/button_icon/original.png);")
+			self.opModule = 'None'
+
+		self.moduleButton.update()
+
+	def confirmOp(self):
+		opFields = ["Name", "Rarity", "Level", "Promotion", "Potential", "Skill", "S1", "S2", "S3", 'Module']
+		opInput = [self.opName, str(self.opRarity + 1), str(self.opLevel) + "/" + str(self.maxLevel), self.opPromotion, str(self.opPotential), self.skillRank, self.opS1, self.opS2, self.opS3, self.opModule]
+		d = dict(zip(opFields, opInput))
+		finalData = {}
+		finalData['sample1'] = d
+		print(finalData)
+
+		with open('fotometta_output/output_dict.txt', 'r+') as file:
+			if os.stat('fotometta_output/output_dict.txt').st_size == 0:
+				finalData = assembleDict(finalData)
+				file.write(json.dumps(finalData))
+			else:
+				tableData = json.loads(file.read())
+				a1, a2 = [], []
+
+				for entry in tableData:
+					a1.append(tableData[entry])
+
+				for entry in finalData:
+					a2.append(finalData[entry])
+
+				a1.extend(a2)
+				finalData = arrToDict(a1)
+				finalData = assembleDict(finalData)
+				file.seek(0)
+				file.truncate()
+				file.write(json.dumps(finalData))
+
+	def submitExit(self):
+		self.submitted.emit('close')
+		self.close()
+
 	def closeEvent(self, event):
 		try:
-			self.opRarityLabel.hide()
-			self.opNameLabel.hide()
-			self.eliteButton.hide()
-			self.levelCombo.hide()
-			self.opLevelLabel.hide()
-			self.s1Button.hide()
-			self.s2Button.hide()
-			self.s3Button.hide()
+			self.opRarityLabel.close()
 		except:
 			print('not all defined')
+			pass
 		else:
-			self.opRarityLabel.hide()
-			self.opNameLabel.hide()
-			self.eliteButton.hide()
-			self.levelCombo.hide()
-			self.opLevelLabel.hide()
-			self.s1Button.hide()
-			self.s2Button.hide()
-			self.s3Button.hide()
+			self.opRarityLabel.close()
+			self.opNameLabel.close()
+			self.eliteButton.close()
+			self.levelCombo.close()
+			self.opLevelLabel.close()
+			self.skillRankCombo.close()
+			self.skillRankLabel.close()
+			self.s1Button.close()
+			self.s2Button.close()
+			self.s3Button.close()
+			self.potentialButton.close()
+			self.moduleButton.close()
+			self.confirmButton.close()
 		finally:
 			self.close()
 
@@ -337,59 +504,69 @@ class rosterTable(QMainWindow):
 	def __init__(self):
 		super(rosterTable, self).__init__()
 		self.setStyleSheet(style)
+
+		self.table = QtWidgets.QTableWidget(self)
+		self.tableWidth = 0
+		self.minDim = 50
+		self.height = 558
+		self.opData = []
+		self.mSize = 0
+
+		self.initTable()
+		self.centerWindow()
+
+	def initTable(self):
 		jsonTable = json.loads(open('fotometta_output/output_dict.txt', 'r').read())
 		row = len(jsonTable.keys())
 		col = len(jsonTable[list(jsonTable.keys())[0]]) + 1
-		tableWidth = 0
-		minDim = 50
-		height = 558
 
-		self.table = QtWidgets.QTableWidget(self)
+		initOpList()
+
+		self.table.clear()
 		self.table.setFont(QFont('Roboto', 11))
 		self.table.setRowCount(row)
 		self.table.setColumnCount(col)
 		headers = ['Icon']
-
-		self.table.clear()
 
 		for index, (i, j) in enumerate(jsonTable[list(jsonTable.keys())[0]].items()):
 			headers.append(i)
 
 		self.table.setHorizontalHeaderLabels(headers)
 		self.table.horizontalHeader().setStyleSheet("QHeaderView { font-size: 10pt; font-weight: bold;}")
+		userRoster.clear()
 
 		for i, valr in enumerate(jsonTable.keys()):
 			fileName = ''
 			for j, (temp, data) in enumerate(jsonTable[list(jsonTable.keys())[i]].items()):
 				skip = j + 1
-				mSize = minDim - int(minDim * 0.1)
+				self.mSize = self.minDim - int(self.minDim * 0.1)
 
 				if temp == 'Name':
 					fileName = data.lower()
 					userRoster.append(data)
 
 				if data == 'M0':
-					self.table.setCellWidget(i, skip, self.getImageQt('m0.png', mSize))
+					self.table.setCellWidget(i, skip, self.getImageQt('m0.png', self.mSize))
 				elif data == 'M1':
-					self.table.setCellWidget(i, skip, self.getImageQt('m1.png', mSize))
+					self.table.setCellWidget(i, skip, self.getImageQt('m1.png', self.mSize))
 				elif data == 'M2':
-					self.table.setCellWidget(i, skip, self.getImageQt('m2.png', mSize))
+					self.table.setCellWidget(i, skip, self.getImageQt('m2.png', self.mSize))
 				elif data == 'M3':
-					self.table.setCellWidget(i, skip, self.getImageQt('m3.png', mSize))
+					self.table.setCellWidget(i, skip, self.getImageQt('m3.png', self.mSize))
 				elif temp == 'Potential':
 					pot = 'p' + str(data) +'.png'
-					self.table.setCellWidget(i, skip, self.getImageQt(pot, mSize))
+					self.table.setCellWidget(i, skip, self.getImageQt(pot, self.mSize))
 				elif data == 'E0':
-					self.table.setCellWidget(i, skip, self.getImageQt('e0.png', mSize))
+					self.table.setCellWidget(i, skip, self.getImageQt('e0.png', self.mSize))
 					fileName += '1.png'
 				elif data == 'E1':
-					self.table.setCellWidget(i, skip, self.getImageQt('e1.png', mSize))
+					self.table.setCellWidget(i, skip, self.getImageQt('e1.png', self.mSize))
 					if fileName == 'amiya':
 						fileName += '2.png'
 					else:
 						fileName += '1.png'
 				elif data == 'E2':
-					self.table.setCellWidget(i, skip, self.getImageQt('e2.png', mSize))
+					self.table.setCellWidget(i, skip, self.getImageQt('e2.png', self.mSize))
 					if fileName == 'amiya':
 						fileName += '3.png'
 					else:
@@ -402,98 +579,88 @@ class rosterTable(QMainWindow):
 
 					self.table.setItem(i, skip, QTableWidgetItem(stars))
 				elif temp == 'Module':
-					if data != 'None':
-						self.table.setCellWidget(i, skip, self.getImageQt('module_icon/' + data + '.png', mSize))
+					if data != 'None' and data != 'True':
+						self.table.setCellWidget(i, skip, self.getImageQt('module_icon/' + data + '.png', self.mSize))
 				else:
 					self.table.setItem(i, skip, QTableWidgetItem(data))
 
 				if j == 9:
-					self.table.setCellWidget(i, 0, self.getImageQt('op_icon/' + fileName, minDim))
+					self.table.setCellWidget(i, 0, self.getImageQt('op_icon/' + fileName, self.minDim))
 
-			self.table.setRowHeight(i, minDim)
+			self.table.setRowHeight(i, self.minDim)
 
 		self.table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
 		self.table.setSizeAdjustPolicy(QtWidgets.QAbstractScrollArea.AdjustToContents)
 		self.table.resizeColumnsToContents()
+		self.table.setColumnWidth(1, 220)
 		self.table.verticalScrollBar().setStyleSheet("QScrollBar:vertical { width: 15px; }")
 		self.table.horizontalScrollBar().setStyleSheet("QScrollBar:horizontal { height: 15px; }")
-		tableWidth = self.table.verticalHeader().size().width()
-		tableHeight = self.table.horizontalHeader().size().height()
+		self.tableWidth = self.table.verticalHeader().size().width()
+		self.tableHeight = self.table.horizontalHeader().size().height()
 
 		for i in range(0, col):
-			if self.table.columnWidth(i) < minDim:
-				self.table.setColumnWidth(i, minDim)
+			if self.table.columnWidth(i) < self.minDim:
+				self.table.setColumnWidth(i, self.minDim)
 
 		for i in range(self.table.columnCount()):
-			tableWidth += self.table.columnWidth(i)
+			self.tableWidth += self.table.columnWidth(i)
 
 		for i in range(self.table.rowCount()):
-			tableHeight += self.table.rowHeight(i) + 1
+			self.tableHeight += self.table.rowHeight(i) + 1
 
-		tableWidth += 2 #scrollbar width
+		self.tableWidth += 2 #scrollbar width
 
-		if tableHeight > height:
-			tableWidth += 15
+		if self.tableHeight > self.height:
+			self.tableWidth += 15
 
-		self.text1 = QtWidgets.QLabel(self)
-		self.text1.setText('Filter:')
-		self.text1.setFont(QFont('Roboto', 11))
-		self.text1.setFixedWidth(self.width())
-		self.text1.move(8, -1)
+		self.filterLabel = QtWidgets.QLabel('Filter', self)
+		self.filterLabel.setFont(QFont('Roboto', 11))
+		self.filterLabel.setFixedWidth(self.width())
+		self.filterLabel.move(8, -1)	
 
 		self.inputText = QLineEdit(self)
 		self.inputText.resize(250, 20)
 		self.inputText.move(45, 5)
 		self.inputText.textChanged.connect(self.filter)
 
-		self.addButton = QtWidgets.QPushButton(self)
-		self.addButton.setText('Add')
-		self.addButton.setFixedWidth(120)
-		self.addButton.setFixedHeight(40)
-		self.addButton.move(tableWidth + 15, 28)
+		self.addButton = QtWidgets.QPushButton('Add/Update', self)
+		self.addButton.setGeometry(self.tableWidth + 15, 28, 120, 40)
 		self.addButton.clicked.connect(self.addOperator)
 
-		self.editButton = QtWidgets.QPushButton(self)
-		self.editButton.setText('Edit')
-		self.editButton.setFixedWidth(120)
-		self.editButton.setFixedHeight(40)
-		self.editButton.move(tableWidth + 15, 83)
-		self.editButton.clicked.connect(self.closeEvent)
+		# self.editButton = QtWidgets.QPushButton('Edit', self)
+		# self.editButton.setGeometry(self.tableWidth + 15, 83, 120, 40)
+		# self.editButton.setCheckable(True)
+		# self.editButton.clicked.connect(self.editOperator)
 
-		self.outputJsonButton = QtWidgets.QPushButton(self)
-		self.outputJsonButton.setText('Output to Image')
-		self.outputJsonButton.setFixedWidth(120)
-		self.outputJsonButton.setFixedHeight(40)
-		self.outputJsonButton.move(tableWidth + 15, 390)
-		self.outputJsonButton.clicked.connect(self.outputImage)
+		self.outputImageButton = QtWidgets.QPushButton('Output to Image', self)
+		self.outputImageButton.setGeometry(self.tableWidth + 15, 445, 120, 40)
+		self.outputImageButton.clicked.connect(self.outputImage)
 
-		self.closeButton = QtWidgets.QPushButton(self)
-		self.closeButton.setText('Close')
-		self.closeButton.setFixedWidth(120)
-		self.closeButton.setFixedHeight(40)
-		self.closeButton.move(tableWidth + 15, 445)
+		self.closeButton = QtWidgets.QPushButton('Close', self)
+		self.closeButton.setGeometry(self.tableWidth + 15, 500, 120, 40)
 		self.closeButton.clicked.connect(self.closeEvent)
 
+		self.fiaLabel = QtWidgets.QLabel(self)
+		self.fiaLabel.setAlignment(Qt.AlignCenter)
+		self.fiaIcon = QPixmap('ui_asset/icon.png')
+		self.fiaLabel.setPixmap(self.fiaIcon)
+		self.fiaLabel.resize(self.fiaIcon.width() - 60, self.fiaIcon.height() - 30)
+		self.fiaLabel.move(self.tableWidth + 5, 265)
 
-		self.table.setGeometry(QtCore.QRect(0, 30, tableWidth, height - 30))
-		self.setGeometry(0, 0, tableWidth + 150, height)
-		self.setFixedSize(tableWidth + 150, height)
+		self.table.setGeometry(QtCore.QRect(0, 30, self.tableWidth, self.height - 30))
+		self.setFixedSize(self.tableWidth + 150, self.height)
+
+		self.addOpW = addOpWindow()
+		self.retrieveSignal = QtWidgets.QLineEdit(text = '')
+
+	def centerWindow(self):
+		self.setGeometry(0, 0, self.tableWidth + 150, self.height)
 		self.setWindowTitle('Roster')
 		self.setWindowIcon(QtGui.QIcon('ui_asset/taskbaricon.ico'))
 		qtRec = self.frameGeometry()
 		centre = QDesktopWidget().availableGeometry().center()
 		qtRec.moveCenter(centre)
 		self.move(qtRec.topLeft())
-
-		self.addOpW = addOpWindow()
-
-	def getImageQt(self, path, scale):
-		label = QLabel(self)
-		icon = QPixmap('ui_asset/' + path).scaled(scale, scale, QtCore.Qt.KeepAspectRatio, Qt.SmoothTransformation)
-		label.setStyleSheet("background-color: duron grizzle gray")
-		label.setAlignment(Qt.AlignCenter)
-		label.setPixmap(icon)
-		return label
 
 	def filter(self):
 		if self.inputText.text() != '' and self.inputText.text().isalpha() == True:
@@ -511,7 +678,32 @@ class rosterTable(QMainWindow):
 			for i in range(0, self.table.rowCount()):
 				self.table.setRowHidden(i, False)
 
+	@QtCore.pyqtSlot(str)
+	def getReturn(self, text):
+		userRoster.clear()
+		self.table.clear()
+		self.filterLabel.hide()
+		self.inputText.hide()
+		self.addButton.hide()
+		# self.editButton.hide()
+		self.outputImageButton.hide()
+		self.closeButton.hide()
+		self.initTable()
+		self.filterLabel.update()
+		self.inputText.update()
+		self.addButton.update()
+		# self.editButton.update()
+		self.outputImageButton.update()
+		self.closeButton.update()
+		self.filterLabel.show()
+		self.inputText.show()
+		self.addButton.show()
+		# self.editButton.show()
+		self.outputImageButton.show()
+		self.closeButton.show()
+
 	def addOperator(self):
+		self.addOpW.close()
 		popup = QInputDialog(self)
 		popup.setWindowFlags(popup.windowFlags() & ~Qt.WindowContextHelpButtonHint)
 		popup.setWindowTitle("Input")
@@ -523,41 +715,181 @@ class rosterTable(QMainWindow):
 		else:
 			inputName = 'Cancel'
 
-		if inputName.lower() in (name.lower() for name in opList):
-			if inputName.lower() not in (name2.lower() for name2 in userRoster):
-				self.addOpW.getNewOP(inputName)
-				self.addOpW.show()
-			else:
-				popup2 = QMessageBox()
-				popup2.setStyleSheet(style)
-				popup2.setWindowIcon(QtGui.QIcon('ui_asset/taskbaricon.ico'))
-				popup2.setWindowTitle('Warning')
-				popup2.setText('Operator already added.')
-				popup2.setFont(QFont('Roboto', 11))
-				popup2.setIconPixmap(QPixmap('ui_asset/prtswarning.png'))
-				popup2.setStandardButtons(QMessageBox.Ok)
-				popup2.buttons()[0].setFixedSize(QtCore.QSize(100, 30))
-				popup2.setDefaultButton(QMessageBox.Ok)
-				popup2.exec_()
-		elif inputName != 'Cancel':
-			popup2 = QMessageBox()
-			popup2.setStyleSheet(style)
-			popup2.setWindowIcon(QtGui.QIcon('ui_asset/taskbaricon.ico'))
-			popup2.setWindowTitle('Warning')
-			popup2.setText('Operator not found.')
-			popup2.setFont(QFont('Roboto', 11))
-			popup2.setIconPixmap(QPixmap('ui_asset/prtswarning.png'))
-			popup2.setStandardButtons(QMessageBox.Ok)
-			popup2.buttons()[0].setFixedSize(QtCore.QSize(100, 30))
-			popup2.setDefaultButton(QMessageBox.Ok)
-			popup2.exec_()
+		matchValue = 0
+		for name in opList:
+			if fuzz.partial_ratio(name.lower(), inputName.lower()) > matchValue:
+				matchValue = fuzz.partial_ratio(name.lower(), inputName.lower())
+				matchName = name
+
+		# if inputName == 'Cancel':
+		# 	popup2 = QMessageBox()
+		# 	popup2.setStyleSheet(style)
+		# 	popup2.setWindowIcon(QtGui.QIcon('ui_asset/taskbaricon.ico'))
+		# 	popup2.setWindowTitle('Warning')
+		# 	popup2.setText('Operator not found.')
+		# 	popup2.setFont(QFont('Roboto', 11))
+		# 	popup2.setIconPixmap(QPixmap('ui_asset/prtswarning.png'))
+		# 	popup2.setStandardButtons(QMessageBox.Ok)
+		# 	popup2.buttons()[0].setFixedSize(QtCore.QSize(100, 30))
+		# 	popup2.setDefaultButton(QMessageBox.Ok)
+		# 	popup2.exec_()
+		# if (inputName.lower() in (name.lower() for name in opList)) and inputName != 'Cancel':
+		if inputName != 'Cancel' and inputName != '':
+			inputName = matchName
+			self.inputText.setText('')
+			self.addOpW.getNewOP(inputName)
+			self.addOpW.show()
+			self.addOpW.submitted.connect(self.getReturn)
+			# else:
+			# 	popup2 = QMessageBox()
+			# 	popup2.setStyleSheet(style)
+			# 	popup2.setWindowIcon(QtGui.QIcon('ui_asset/taskbaricon.ico'))
+			# 	popup2.setWindowTitle('Warning')
+			# 	popup2.setText('Operator already added.')
+			# 	popup2.setFont(QFont('Roboto', 11))
+			# 	popup2.setIconPixmap(QPixmap('ui_asset/prtswarning.png'))
+			# 	popup2.setStandardButtons(QMessageBox.Ok)
+			# 	popup2.buttons()[0].setFixedSize(QtCore.QSize(100, 30))
+			# 	popup2.setDefaultButton(QMessageBox.Ok)
+			# 	popup2.exec_()
+		
+
+	# def editOperator(self):
+	# 	if self.editButton.isChecked():
+	# 		with open('fotometta_output/output_dict.txt', 'r+') as file:
+	# 			self.opData.clear()
+	# 			self.opData = json.loads(file.read())
+
+	# 		self.editButton.setStyleSheet("background-color : orange; color: black;")
+	# 		self.table.setStyleSheet("QHeaderView::section {background-color: orange; color: black;}")
+	# 		self.editButton.setText('Exit Edit')
+	# 		self.table.setEditTriggers(QtWidgets.QAbstractItemView.SelectedClicked) 
+	# 		self.table.cellClicked.connect(self.editTableCell)
+	# 	else:
+	# 		with open('fotometta_output/output_dict.txt', 'r+') as file:
+	# 			tableData = json.loads(file.read())
+
+	# 			if tableData != self.opData:
+	# 				popup = QMessageBox()
+	# 				popup.setStyleSheet(style)
+	# 				popup.setWindowIcon(QtGui.QIcon('ui_asset/taskbaricon.ico'))
+	# 				popup.setWindowTitle('Changes made to roster')
+	# 				popup.setText('You have made changes to your roster.\nWould you like to save these changes?')
+	# 				popup.setFont(QFont('Roboto', 11))
+	# 				popup.setIconPixmap(QPixmap('ui_asset/prtswarning.png'))
+	# 				popup.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
+	# 				popup.setDefaultButton(QMessageBox.Cancel)
+	# 				p = popup.exec_()
+
+	# 				if p == QMessageBox.Ok:
+	# 					file.seek(0)
+	# 					file.truncate()
+	# 					self.opData = changeStatsToFit(self.opData)
+	# 					self.opData = assembleDict(self.opData)
+	# 					file.write(json.dumps(self.opData))
+	# 				else:
+	# 					file.seek(0)
+	# 					file.truncate()
+	# 					file.write(json.dumps(tableData))
+
+	# 		self.editButton.setStyleSheet("background-color : QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #565656, stop: 0.1 #525252, stop: 0.5 #4e4e4e, stop: 0.9 #4a4a4a, stop: 1 #464646)")
+	# 		self.table.setStyleSheet("QHeaderView::section {background-color: QLinearGradient(x1:0, y1:0, x2:0, y2:1, stop:0 #616161, stop: 0.5 #505050, stop: 0.6 #434343, stop:1 #656565); color: white;}")
+	# 		self.editButton.setText('Edit')
+	# 		self.table.cellClicked.disconnect(self.editTableCell)
+	# 		self.table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
+
+	# 		self.table.clear()
+	# 		self.filterLabel.hide()
+	# 		self.inputText.hide()
+	# 		self.addButton.hide()
+	# 		self.editButton.hide()
+	# 		self.outputImageButton.hide()
+	# 		self.closeButton.hide()
+	# 		self.initTable()
+	# 		self.filterLabel.update()
+	# 		self.inputText.update()
+	# 		self.addButton.update()
+	# 		self.editButton.update()
+	# 		self.outputImageButton.update()
+	# 		self.closeButton.update()
+	# 		self.filterLabel.show()
+	# 		self.inputText.show()
+	# 		self.addButton.show()
+	# 		self.editButton.show()
+	# 		self.outputImageButton.show()
+	# 		self.closeButton.show()
+
+	# def editTableCell(self, row, col):
+	# 	if self.editButton.isChecked():
+	# 		# print(row, col)
+	# 		# print(self.table.item(row, col))
+	# 		# print(self.table.horizontalHeaderItem(col).text())
+
+	# 		for i in range(0, self.table.columnCount()):
+	# 			if self.table.horizontalHeaderItem(i).text() == 'Name':
+	# 				opName = self.table.item(row, i).text()
+	# 				break;
+
+	# 		for key in list(self.opData):
+	# 			if self.opData[key]['Name'] == opName:
+	# 				indexKey = key
+
+	# 		if self.table.horizontalHeaderItem(col).text() == 'Promotion':
+	# 			if self.opData[indexKey]['Promotion'] == 'E0':
+	# 				self.opData[indexKey]['Promotion'] = 'E1'
+	# 				# self.table.setCellWidget(row, col, self.getImageQt('e1.png', self.mSize))
+	# 			elif self.opData[indexKey]['Promotion'] == 'E1' and self.opData[indexKey]['Rarity'] > '3':
+	# 				self.opData[indexKey]['Promotion'] = 'E2'
+	# 				# self.table.setCellWidget(row, col, self.getImageQt('e2.png', self.mSize))
+	# 			elif self.opData[indexKey]['Promotion'] == 'E1' and self.opData[indexKey]['Rarity'] <= '3':
+	# 				self.opData[indexKey]['Promotion'] = 'E0'
+	# 				# self.table.setCellWidget(row, col, self.getImageQt('e0.png', self.mSize))
+	# 			elif self.opData[indexKey]['Promotion'] == 'E2':
+	# 				self.opData[indexKey]['Promotion'] = 'E0'
+	# 				# self.table.setCellWidget(row, col, self.getImageQt('e0.png', self.mSize))
+	# 		elif self.table.horizontalHeaderItem(col).text() == 'Potential':
+	# 			if self.opData[indexKey]['Potential'] >= '1' and self.opData[indexKey]['Potential'] <= '5':
+	# 				self.opData[indexKey]['Potential'] = str(int(self.opData[indexKey]['Potential']) + 1)
+	# 				pot = 'p' + self.opData[indexKey]['Potential'] + '.png'
+	# 				# self.table.setCellWidget(row, col, self.getImageQt(pot, self.mSize))
+	# 			else:
+	# 				self.opData[indexKey]['Potential'] = '1'
+	# 				# self.table.setCellWidget(row, col, self.getImageQt('p1.png', self.mSize))
+	# 		elif self.table.horizontalHeaderItem(col).text() == 'Level':
+	# 			cellValue = self.table.item(row, col).text()
+	# 			opLevel = int(cellValue.split('/')[0])
+	# 			maxLevel = int(cellValue.split('/')[1])
+
+	# 			cBox = QtWidgets.QComboBox()
+	# 			for i in range(1, maxLevel + 1):
+	# 				cBox.addItem(str(i))
+	# 			cBox.setCurrentIndex(opLevel - 1)
+	# 			self.table.setCellWidget(row, col, cBox)
+
+	# 			# while cBox.isVisible():
+	# 			# 	level = cBox.currentText()
+				
+
+
+
+				
+	# 		self.opData = changeStatsToFit(self.opData)
+	# 		# self.initDemoTable()
+	# 		# print(self.opData[indexKey])
+
+	def getImageQt(self, path, scale):
+		label = QLabel(self)
+		icon = QPixmap('ui_asset/' + path).scaled(scale, scale, QtCore.Qt.KeepAspectRatio, Qt.SmoothTransformation)
+		label.setStyleSheet("background-color: duron grizzle gray")
+		label.setAlignment(Qt.AlignCenter)
+		label.setPixmap(icon)
+		return label
 
 	def outputImage(self):
 		tw, th = 0, 4
 
 		for i in range(self.table.columnCount()):
 			tw += self.table.columnWidth(i) + 3
-
 		for i in range(self.table.rowCount()):
 			th += self.table.rowHeight(i) + 1
 
@@ -568,11 +900,9 @@ class rosterTable(QMainWindow):
 		pic = QtGui.QPixmap(self.table.size())
 		self.table.render(pic)
 		pic.save('fotometta_output/roster.jpg')
-
 		self.close()
 
 	def closeEvent(self, event):
-		# QApplication.closeAllWindows()
 		self.addOpW.close()
 		self.close()
 
@@ -604,16 +934,14 @@ class mainWindow(QMainWindow):
 		self.iconLabel.setPixmap(self.icon)
 		self.iconLabel.resize(w, self.icon.height())
 
-		self.openRosterButton = QtWidgets.QPushButton(self)
-		self.openRosterButton.setText('Open Roster')
+		self.openRosterButton = QtWidgets.QPushButton('Open Roster', self)
 		self.openRosterButton.setStyleSheet("QPushButton { font-size: 15px; }")
 		self.openRosterButton.setFixedWidth(180)
 		self.openRosterButton.setFixedHeight(50)
 		self.openRosterButton.move(88, self.icon.height())
 		self.openRosterButton.clicked.connect(self.showRoster)
 
-		self.text1 = QtWidgets.QLabel(self)
-		self.text1.setText('Select the folder that contains your roster:')
+		self.text1 = QtWidgets.QLabel('Select the folder that contains your roster:', self)
 		self.text1.setFont(QFont('Roboto', 13))
 		self.text1.setFixedWidth(self.width())
 		self.text1.setAlignment(Qt.AlignCenter)
@@ -623,26 +951,22 @@ class mainWindow(QMainWindow):
 		self.folderText.resize(250, 25)
 		self.folderText.move(20, self.icon.height() + 95)
 
-		self.folderButton = QtWidgets.QPushButton(self)
-		self.folderButton.setText('Browse')
+		self.folderButton = QtWidgets.QPushButton('Browse', self)
 		self.folderButton.setFixedWidth(60)
 		self.folderButton.move(276, self.icon.height() + 92)
 		self.folderButton.clicked.connect(self.browseFolder)
 
-		self.createNewButton = QtWidgets.QPushButton(self)
-		self.createNewButton.setText('Create New Roster')
+		self.createNewButton = QtWidgets.QPushButton('Create New Roster', self)
 		self.createNewButton.setFixedWidth(150)
 		self.createNewButton.setFixedHeight(40)
 		self.createNewButton.move(25, self.icon.height() + 135)
 		self.createNewButton.clicked.connect(self.createNew)
 
-		self.updateExistingButton = QtWidgets.QPushButton(self)
-		self.updateExistingButton.setText('Update Existing')
+		self.updateExistingButton = QtWidgets.QPushButton('Update Existing', self)
 		self.updateExistingButton.setFixedWidth(140)
 		self.updateExistingButton.setFixedHeight(40)
 		self.updateExistingButton.move(191, self.icon.height() + 135)
 		self.updateExistingButton.clicked.connect(self.updateExisting)
-
 
 	def showRoster(self):
 		if os.stat('fotometta_output/output_dict.txt').st_size != 0:
@@ -759,10 +1083,10 @@ class mainWindow(QMainWindow):
 			self.showRoster()
 
 	def closeEvent(self, event):
-		#self.openRosterWindow.close()
 		QApplication.closeAllWindows()
 		self.close()
 
+#--------------------------------------------------------------------------------------------------------------
 #--------------------------------------------------------------------------------------------------------------
 
 def startup():

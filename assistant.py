@@ -236,7 +236,6 @@ def arkAssist(input, nameReader):
 	if lvProb1 > lvProb2:
 		croppedLv = rightSide[lvDim[0][1]:lvDim[1][1], lvDim[0][0]:lvDim[1][0]]
 		croppedLv = cv.cvtColor(croppedLv, cv.COLOR_BGR2GRAY)
-		# level = nameReader.readtext(croppedLv, detail = 0)
 		ret, lvThresh = cv.threshold(croppedLv, 200, 255, cv.THRESH_BINARY)
 		level = nameReader.readtext(lvThresh, detail = 0)
 
@@ -286,16 +285,6 @@ def arkAssist(input, nameReader):
 	croppedMod = cv.cvtColor(croppedMod, cv.COLOR_BGR2GRAY)
 
 	modProb = 0
-
-	# for x in range(-5, 5):
-	# 	modResize = cv.resize(noMod, (0, 0), fx = 1 - 0.1 * x, fy = 1 - 0.1 * x)
-
-	# 	if modResize.shape[0] < croppedMod.shape[0] and modResize.shape[1] < croppedMod.shape[1]:
-	# 		modComp = cv.matchTemplate(croppedMod, modResize, cv.TM_CCORR_NORMED)
-
-	# 		if np.amax(modComp) > modProb:
-	# 			modProb = np.amax(modComp)
-
 
 	for m in os.listdir('image_matching/module_icon'):
 		modImg = cv.imread('image_matching/module_icon/' + m, 0)
@@ -457,17 +446,6 @@ def removeDupes(d):
 					isDupe = True
 					newRoster[entry2] = d[entry]
 
-					# if newRoster[entry2]['Promotion'] < d[entry]['Promotion']:
-					# 	newRoster[entry2] = d[entry]
-					# elif newRoster[entry2]['Promotion'] == d[entry]['Promotion'] and newRoster[entry2]['Potential'] < d[entry]['Potential']:
-					# 	newRoster[entry2] = d[entry]
-					# elif newRoster[entry2]['Promotion'] == d[entry]['Promotion'] and newRoster[entry2]['Potential'] == d[entry]['Potential'] and int(newRoster[entry2]['Level'][:-3]) < int(d[entry]['Level'][:-3]):
-					# 	newRoster[entry2] = d[entry]
-					# elif newRoster[entry2]['Promotion'] == d[entry]['Promotion'] and newRoster[entry2]['Potential'] == d[entry]['Potential'] and int(newRoster[entry2]['Level'][:-3]) == int(d[entry]['Level'][:-3]) and newRoster[entry2]['Skill'] < d[entry]['Skill']:
-					# 	newRoster[entry2] = d[entry]
-					# elif newRoster[entry2]['Promotion'] == d[entry]['Promotion'] and newRoster[entry2]['Potential'] == d[entry]['Potential'] and int(newRoster[entry2]['Level'][:-3]) == int(d[entry]['Level'][:-3]) and newRoster[entry2]['Skill'] == d[entry]['Skill'] and (newRoster[entry2]['S1'] + newRoster[entry2]['S2'] + newRoster[entry2]['S3']) < (d[entry]['S1'] + d[entry]['S2'] + d[entry]['S3']):
-					# 	newRoster[entry2] = d[entry]
-
 			if isDupe == False:
 				newRoster[entry] = d[entry]
 
@@ -495,7 +473,7 @@ def arrToDict(a):
 		for key, value in modulejson.items():
 			if key != 'missionList' and key != 'subProfDict' and key != 'charEquip':
 				for key2, value2 in modulejson[key].items():
-					if modulejson[key][key2]['charId'] == charCode:
+					if modulejson[key][key2]['charId'] == charCode and a[i - 1]['Promotion'] == 'E2':
 						if a[i - 1]['Module'] == 'None':
 							a[i - 1]['Module'] = 'original'
 						elif a[i - 1]['Module'] == 'True' and modulejson[key][key2]['typeIcon'] != 'original':
@@ -511,8 +489,74 @@ def arrToDict(a):
 def assembleDict(d):
 	finalData = {}
 	a = []
-	b = []
 	a = removeDupes(d)
 	finalData = arrToDict(a)
 	
 	return finalData
+
+#--------------------------------------------------------------------------------------------------------------
+
+def getMaxLevel(promotion, rarity):
+	if promotion == 'E0':
+		if rarity == 5 or rarity == 4:
+			maxLevel = 50
+		elif rarity == 3:
+			maxLevel = 45
+		elif rarity == 2:
+			maxLevel = 40
+		else:
+			maxLevel = 30
+	elif promotion == 'E1':
+		if rarity == 5:
+			maxLevel = 80
+		elif rarity == 4:
+			maxLevel = 70
+		elif rarity == 3:
+			maxLevel = 60
+		elif rarity == 2:
+			maxLevel = 55
+		else:
+			maxLevel = 30
+	elif promotion == 'E2':
+		if rarity == 5:
+			maxLevel = 90
+		elif rarity == 4:
+			maxLevel = 80
+		elif rarity == 3:
+			maxLevel = 70
+		elif rarity == 2:
+			maxLevel = 55
+		else:
+			maxLevel = 30
+
+	return maxLevel
+
+#--------------------------------------------------------------------------------------------------------------
+
+def changeStatsToFit(d):
+	for key in list(d):
+		rarity = int(d[key]['Rarity']) - 1
+		promotion = d[key]['Promotion']
+		level = int(d[key]['Level'].split('/')[0])
+
+		maxLevel = getMaxLevel(promotion, rarity)
+
+		if level > maxLevel:
+			level = maxLevel
+		
+		d[key]['Level'] = str(level) + '/' + str(maxLevel)
+
+		if promotion == 'E0' or promotion == 'E1':
+			d[key]['S1'] = ''
+			d[key]['S2'] = ''
+			d[key]['S3'] = ''
+			d[key]['Module'] = 'None'
+		elif promotion == 'E2' and d[key]['Skill'] == 'RANK 7':
+			d[key]['S1'] = 'M0'
+			d[key]['S2'] = 'M0'
+			d[key]['S3'] = 'M0'
+
+		if promotion == 'E0' and d[key]['Skill'] > 'RANK 4':
+			d[key]['Skill'] = 'RANK 4'
+
+	return d
