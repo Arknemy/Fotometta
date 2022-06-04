@@ -627,11 +627,6 @@ class rosterTable(QMainWindow):
 		self.addButton.setGeometry(self.tableWidth + 15, 28, 120, 40)
 		self.addButton.clicked.connect(self.addOperator)
 
-		# self.editButton = QtWidgets.QPushButton('Edit', self)
-		# self.editButton.setGeometry(self.tableWidth + 15, 83, 120, 40)
-		# self.editButton.setCheckable(True)
-		# self.editButton.clicked.connect(self.editOperator)
-
 		self.outputImageButton = QtWidgets.QPushButton('Output to Image', self)
 		self.outputImageButton.setGeometry(self.tableWidth + 15, 445, 120, 40)
 		self.outputImageButton.clicked.connect(self.outputImage)
@@ -685,7 +680,6 @@ class rosterTable(QMainWindow):
 		self.inputText.hide()
 		self.addButton.hide()
 		self.fiaLabel.hide()
-		# self.editButton.hide()
 		self.outputImageButton.hide()
 		self.closeButton.hide()
 		self.initTable()
@@ -693,14 +687,12 @@ class rosterTable(QMainWindow):
 		self.inputText.update()
 		self.addButton.update()
 		self.fiaLabel.update()
-		# self.editButton.update()
 		self.outputImageButton.update()
 		self.closeButton.update()
 		self.filterLabel.show()
 		self.inputText.show()
 		self.addButton.show()
 		self.fiaLabel.show()
-		# self.editButton.show()
 		self.outputImageButton.show()
 		self.closeButton.show()
 
@@ -718,166 +710,21 @@ class rosterTable(QMainWindow):
 			inputName = 'Cancel'
 
 		matchValue = 0
+
 		for name in opList:
+			if name.lower() == inputName.lower():
+				matchName = name
+				break
 			if fuzz.partial_ratio(name.lower(), inputName.lower()) > matchValue:
 				matchValue = fuzz.partial_ratio(name.lower(), inputName.lower())
 				matchName = name
 
-		# if inputName == 'Cancel':
-		# 	popup2 = QMessageBox()
-		# 	popup2.setStyleSheet(style)
-		# 	popup2.setWindowIcon(QtGui.QIcon('ui_asset/taskbaricon.ico'))
-		# 	popup2.setWindowTitle('Warning')
-		# 	popup2.setText('Operator not found.')
-		# 	popup2.setFont(QFont('Roboto', 11))
-		# 	popup2.setIconPixmap(QPixmap('ui_asset/prtswarning.png'))
-		# 	popup2.setStandardButtons(QMessageBox.Ok)
-		# 	popup2.buttons()[0].setFixedSize(QtCore.QSize(100, 30))
-		# 	popup2.setDefaultButton(QMessageBox.Ok)
-		# 	popup2.exec_()
-		# if (inputName.lower() in (name.lower() for name in opList)) and inputName != 'Cancel':
 		if inputName != 'Cancel' and inputName != '':
 			inputName = matchName
 			self.inputText.setText('')
 			self.addOpW.getNewOP(inputName)
 			self.addOpW.show()
 			self.addOpW.submitted.connect(self.getReturn)
-			# else:
-			# 	popup2 = QMessageBox()
-			# 	popup2.setStyleSheet(style)
-			# 	popup2.setWindowIcon(QtGui.QIcon('ui_asset/taskbaricon.ico'))
-			# 	popup2.setWindowTitle('Warning')
-			# 	popup2.setText('Operator already added.')
-			# 	popup2.setFont(QFont('Roboto', 11))
-			# 	popup2.setIconPixmap(QPixmap('ui_asset/prtswarning.png'))
-			# 	popup2.setStandardButtons(QMessageBox.Ok)
-			# 	popup2.buttons()[0].setFixedSize(QtCore.QSize(100, 30))
-			# 	popup2.setDefaultButton(QMessageBox.Ok)
-			# 	popup2.exec_()
-		
-
-	# def editOperator(self):
-	# 	if self.editButton.isChecked():
-	# 		with open('fotometta_output/output_dict.txt', 'r+') as file:
-	# 			self.opData.clear()
-	# 			self.opData = json.loads(file.read())
-
-	# 		self.editButton.setStyleSheet("background-color : orange; color: black;")
-	# 		self.table.setStyleSheet("QHeaderView::section {background-color: orange; color: black;}")
-	# 		self.editButton.setText('Exit Edit')
-	# 		self.table.setEditTriggers(QtWidgets.QAbstractItemView.SelectedClicked) 
-	# 		self.table.cellClicked.connect(self.editTableCell)
-	# 	else:
-	# 		with open('fotometta_output/output_dict.txt', 'r+') as file:
-	# 			tableData = json.loads(file.read())
-
-	# 			if tableData != self.opData:
-	# 				popup = QMessageBox()
-	# 				popup.setStyleSheet(style)
-	# 				popup.setWindowIcon(QtGui.QIcon('ui_asset/taskbaricon.ico'))
-	# 				popup.setWindowTitle('Changes made to roster')
-	# 				popup.setText('You have made changes to your roster.\nWould you like to save these changes?')
-	# 				popup.setFont(QFont('Roboto', 11))
-	# 				popup.setIconPixmap(QPixmap('ui_asset/prtswarning.png'))
-	# 				popup.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
-	# 				popup.setDefaultButton(QMessageBox.Cancel)
-	# 				p = popup.exec_()
-
-	# 				if p == QMessageBox.Ok:
-	# 					file.seek(0)
-	# 					file.truncate()
-	# 					self.opData = changeStatsToFit(self.opData)
-	# 					self.opData = assembleDict(self.opData)
-	# 					file.write(json.dumps(self.opData))
-	# 				else:
-	# 					file.seek(0)
-	# 					file.truncate()
-	# 					file.write(json.dumps(tableData))
-
-	# 		self.editButton.setStyleSheet("background-color : QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #565656, stop: 0.1 #525252, stop: 0.5 #4e4e4e, stop: 0.9 #4a4a4a, stop: 1 #464646)")
-	# 		self.table.setStyleSheet("QHeaderView::section {background-color: QLinearGradient(x1:0, y1:0, x2:0, y2:1, stop:0 #616161, stop: 0.5 #505050, stop: 0.6 #434343, stop:1 #656565); color: white;}")
-	# 		self.editButton.setText('Edit')
-	# 		self.table.cellClicked.disconnect(self.editTableCell)
-	# 		self.table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
-
-	# 		self.table.clear()
-	# 		self.filterLabel.hide()
-	# 		self.inputText.hide()
-	# 		self.addButton.hide()
-	# 		self.editButton.hide()
-	# 		self.outputImageButton.hide()
-	# 		self.closeButton.hide()
-	# 		self.initTable()
-	# 		self.filterLabel.update()
-	# 		self.inputText.update()
-	# 		self.addButton.update()
-	# 		self.editButton.update()
-	# 		self.outputImageButton.update()
-	# 		self.closeButton.update()
-	# 		self.filterLabel.show()
-	# 		self.inputText.show()
-	# 		self.addButton.show()
-	# 		self.editButton.show()
-	# 		self.outputImageButton.show()
-	# 		self.closeButton.show()
-
-	# def editTableCell(self, row, col):
-	# 	if self.editButton.isChecked():
-	# 		# print(row, col)
-	# 		# print(self.table.item(row, col))
-	# 		# print(self.table.horizontalHeaderItem(col).text())
-
-	# 		for i in range(0, self.table.columnCount()):
-	# 			if self.table.horizontalHeaderItem(i).text() == 'Name':
-	# 				opName = self.table.item(row, i).text()
-	# 				break;
-
-	# 		for key in list(self.opData):
-	# 			if self.opData[key]['Name'] == opName:
-	# 				indexKey = key
-
-	# 		if self.table.horizontalHeaderItem(col).text() == 'Promotion':
-	# 			if self.opData[indexKey]['Promotion'] == 'E0':
-	# 				self.opData[indexKey]['Promotion'] = 'E1'
-	# 				# self.table.setCellWidget(row, col, self.getImageQt('e1.png', self.mSize))
-	# 			elif self.opData[indexKey]['Promotion'] == 'E1' and self.opData[indexKey]['Rarity'] > '3':
-	# 				self.opData[indexKey]['Promotion'] = 'E2'
-	# 				# self.table.setCellWidget(row, col, self.getImageQt('e2.png', self.mSize))
-	# 			elif self.opData[indexKey]['Promotion'] == 'E1' and self.opData[indexKey]['Rarity'] <= '3':
-	# 				self.opData[indexKey]['Promotion'] = 'E0'
-	# 				# self.table.setCellWidget(row, col, self.getImageQt('e0.png', self.mSize))
-	# 			elif self.opData[indexKey]['Promotion'] == 'E2':
-	# 				self.opData[indexKey]['Promotion'] = 'E0'
-	# 				# self.table.setCellWidget(row, col, self.getImageQt('e0.png', self.mSize))
-	# 		elif self.table.horizontalHeaderItem(col).text() == 'Potential':
-	# 			if self.opData[indexKey]['Potential'] >= '1' and self.opData[indexKey]['Potential'] <= '5':
-	# 				self.opData[indexKey]['Potential'] = str(int(self.opData[indexKey]['Potential']) + 1)
-	# 				pot = 'p' + self.opData[indexKey]['Potential'] + '.png'
-	# 				# self.table.setCellWidget(row, col, self.getImageQt(pot, self.mSize))
-	# 			else:
-	# 				self.opData[indexKey]['Potential'] = '1'
-	# 				# self.table.setCellWidget(row, col, self.getImageQt('p1.png', self.mSize))
-	# 		elif self.table.horizontalHeaderItem(col).text() == 'Level':
-	# 			cellValue = self.table.item(row, col).text()
-	# 			opLevel = int(cellValue.split('/')[0])
-	# 			maxLevel = int(cellValue.split('/')[1])
-
-	# 			cBox = QtWidgets.QComboBox()
-	# 			for i in range(1, maxLevel + 1):
-	# 				cBox.addItem(str(i))
-	# 			cBox.setCurrentIndex(opLevel - 1)
-	# 			self.table.setCellWidget(row, col, cBox)
-
-	# 			# while cBox.isVisible():
-	# 			# 	level = cBox.currentText()
-				
-
-
-
-				
-	# 		self.opData = changeStatsToFit(self.opData)
-	# 		# self.initDemoTable()
-	# 		# print(self.opData[indexKey])
 
 	def getImageQt(self, path, scale):
 		label = QLabel(self)
@@ -1095,6 +942,8 @@ def startup():
 	app = QApplication(sys.argv)
 	QApplication.instance().setFont(font)
 	win = mainWindow()
+
+	opToText()
 
 	win.show()
 	sys.exit(app.exec_())
