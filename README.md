@@ -26,7 +26,7 @@ Example roster image:
 ![](https://github.com/Phoenix22809/Fotometta/blob/main/misc/exampleroster.png)
 
 ## Planned Features
-Adding and editing Operators in the table directly;
+Improving recognition speed;
 
 CN recognition;
 
