@@ -3,6 +3,7 @@ import sys
 import easyocr
 import concurrent.futures
 import json
+import ctypes
 import cv2 as cv
 import numpy as np
 import matplotlib.pyplot as plt
@@ -17,6 +18,9 @@ from PyQt5.QtWidgets import *
 
 #HOUSEKEEPING--------------------------------------------------------------------------------------------------
 
+myappid = 'arbitrary string' # arbitrary string
+ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+
 style = open('ui_asset/darkorange.qss').read()
 font = QFont('Roboto', 10)
 
@@ -27,6 +31,9 @@ rarityList = []
 userRoster = []
 
 #--------------------------------------------------------------------------------------------------------------
+
+def progress_indicator(future):
+   	print('.', end = '', flush = True)
 
 def initOpList():
 	opList.clear()
@@ -479,7 +486,7 @@ class addOpWindow(QMainWindow):
 		try:
 			self.opRarityLabel.close()
 		except:
-			print('not all defined')
+			# print('not all defined')
 			pass
 		else:
 			self.opRarityLabel.close()
@@ -509,7 +516,6 @@ class rosterTable(QMainWindow):
 		self.tableWidth = 0
 		self.minDim = 50
 		self.height = 558
-		self.opData = []
 		self.mSize = 0
 
 		self.initTable()
@@ -627,11 +633,6 @@ class rosterTable(QMainWindow):
 		self.addButton.setGeometry(self.tableWidth + 15, 28, 120, 40)
 		self.addButton.clicked.connect(self.addOperator)
 
-		# self.editButton = QtWidgets.QPushButton('Edit', self)
-		# self.editButton.setGeometry(self.tableWidth + 15, 83, 120, 40)
-		# self.editButton.setCheckable(True)
-		# self.editButton.clicked.connect(self.editOperator)
-
 		self.outputImageButton = QtWidgets.QPushButton('Output to Image', self)
 		self.outputImageButton.setGeometry(self.tableWidth + 15, 445, 120, 40)
 		self.outputImageButton.clicked.connect(self.outputImage)
@@ -685,7 +686,6 @@ class rosterTable(QMainWindow):
 		self.inputText.hide()
 		self.addButton.hide()
 		self.fiaLabel.hide()
-		# self.editButton.hide()
 		self.outputImageButton.hide()
 		self.closeButton.hide()
 		self.initTable()
@@ -693,14 +693,12 @@ class rosterTable(QMainWindow):
 		self.inputText.update()
 		self.addButton.update()
 		self.fiaLabel.update()
-		# self.editButton.update()
 		self.outputImageButton.update()
 		self.closeButton.update()
 		self.filterLabel.show()
 		self.inputText.show()
 		self.addButton.show()
 		self.fiaLabel.show()
-		# self.editButton.show()
 		self.outputImageButton.show()
 		self.closeButton.show()
 
@@ -718,166 +716,21 @@ class rosterTable(QMainWindow):
 			inputName = 'Cancel'
 
 		matchValue = 0
+
 		for name in opList:
+			if name.lower() == inputName.lower():
+				matchName = name
+				break
 			if fuzz.partial_ratio(name.lower(), inputName.lower()) > matchValue:
 				matchValue = fuzz.partial_ratio(name.lower(), inputName.lower())
 				matchName = name
 
-		# if inputName == 'Cancel':
-		# 	popup2 = QMessageBox()
-		# 	popup2.setStyleSheet(style)
-		# 	popup2.setWindowIcon(QtGui.QIcon('ui_asset/taskbaricon.ico'))
-		# 	popup2.setWindowTitle('Warning')
-		# 	popup2.setText('Operator not found.')
-		# 	popup2.setFont(QFont('Roboto', 11))
-		# 	popup2.setIconPixmap(QPixmap('ui_asset/prtswarning.png'))
-		# 	popup2.setStandardButtons(QMessageBox.Ok)
-		# 	popup2.buttons()[0].setFixedSize(QtCore.QSize(100, 30))
-		# 	popup2.setDefaultButton(QMessageBox.Ok)
-		# 	popup2.exec_()
-		# if (inputName.lower() in (name.lower() for name in opList)) and inputName != 'Cancel':
 		if inputName != 'Cancel' and inputName != '':
 			inputName = matchName
 			self.inputText.setText('')
 			self.addOpW.getNewOP(inputName)
 			self.addOpW.show()
 			self.addOpW.submitted.connect(self.getReturn)
-			# else:
-			# 	popup2 = QMessageBox()
-			# 	popup2.setStyleSheet(style)
-			# 	popup2.setWindowIcon(QtGui.QIcon('ui_asset/taskbaricon.ico'))
-			# 	popup2.setWindowTitle('Warning')
-			# 	popup2.setText('Operator already added.')
-			# 	popup2.setFont(QFont('Roboto', 11))
-			# 	popup2.setIconPixmap(QPixmap('ui_asset/prtswarning.png'))
-			# 	popup2.setStandardButtons(QMessageBox.Ok)
-			# 	popup2.buttons()[0].setFixedSize(QtCore.QSize(100, 30))
-			# 	popup2.setDefaultButton(QMessageBox.Ok)
-			# 	popup2.exec_()
-		
-
-	# def editOperator(self):
-	# 	if self.editButton.isChecked():
-	# 		with open('fotometta_output/output_dict.txt', 'r+') as file:
-	# 			self.opData.clear()
-	# 			self.opData = json.loads(file.read())
-
-	# 		self.editButton.setStyleSheet("background-color : orange; color: black;")
-	# 		self.table.setStyleSheet("QHeaderView::section {background-color: orange; color: black;}")
-	# 		self.editButton.setText('Exit Edit')
-	# 		self.table.setEditTriggers(QtWidgets.QAbstractItemView.SelectedClicked) 
-	# 		self.table.cellClicked.connect(self.editTableCell)
-	# 	else:
-	# 		with open('fotometta_output/output_dict.txt', 'r+') as file:
-	# 			tableData = json.loads(file.read())
-
-	# 			if tableData != self.opData:
-	# 				popup = QMessageBox()
-	# 				popup.setStyleSheet(style)
-	# 				popup.setWindowIcon(QtGui.QIcon('ui_asset/taskbaricon.ico'))
-	# 				popup.setWindowTitle('Changes made to roster')
-	# 				popup.setText('You have made changes to your roster.\nWould you like to save these changes?')
-	# 				popup.setFont(QFont('Roboto', 11))
-	# 				popup.setIconPixmap(QPixmap('ui_asset/prtswarning.png'))
-	# 				popup.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
-	# 				popup.setDefaultButton(QMessageBox.Cancel)
-	# 				p = popup.exec_()
-
-	# 				if p == QMessageBox.Ok:
-	# 					file.seek(0)
-	# 					file.truncate()
-	# 					self.opData = changeStatsToFit(self.opData)
-	# 					self.opData = assembleDict(self.opData)
-	# 					file.write(json.dumps(self.opData))
-	# 				else:
-	# 					file.seek(0)
-	# 					file.truncate()
-	# 					file.write(json.dumps(tableData))
-
-	# 		self.editButton.setStyleSheet("background-color : QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #565656, stop: 0.1 #525252, stop: 0.5 #4e4e4e, stop: 0.9 #4a4a4a, stop: 1 #464646)")
-	# 		self.table.setStyleSheet("QHeaderView::section {background-color: QLinearGradient(x1:0, y1:0, x2:0, y2:1, stop:0 #616161, stop: 0.5 #505050, stop: 0.6 #434343, stop:1 #656565); color: white;}")
-	# 		self.editButton.setText('Edit')
-	# 		self.table.cellClicked.disconnect(self.editTableCell)
-	# 		self.table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
-
-	# 		self.table.clear()
-	# 		self.filterLabel.hide()
-	# 		self.inputText.hide()
-	# 		self.addButton.hide()
-	# 		self.editButton.hide()
-	# 		self.outputImageButton.hide()
-	# 		self.closeButton.hide()
-	# 		self.initTable()
-	# 		self.filterLabel.update()
-	# 		self.inputText.update()
-	# 		self.addButton.update()
-	# 		self.editButton.update()
-	# 		self.outputImageButton.update()
-	# 		self.closeButton.update()
-	# 		self.filterLabel.show()
-	# 		self.inputText.show()
-	# 		self.addButton.show()
-	# 		self.editButton.show()
-	# 		self.outputImageButton.show()
-	# 		self.closeButton.show()
-
-	# def editTableCell(self, row, col):
-	# 	if self.editButton.isChecked():
-	# 		# print(row, col)
-	# 		# print(self.table.item(row, col))
-	# 		# print(self.table.horizontalHeaderItem(col).text())
-
-	# 		for i in range(0, self.table.columnCount()):
-	# 			if self.table.horizontalHeaderItem(i).text() == 'Name':
-	# 				opName = self.table.item(row, i).text()
-	# 				break;
-
-	# 		for key in list(self.opData):
-	# 			if self.opData[key]['Name'] == opName:
-	# 				indexKey = key
-
-	# 		if self.table.horizontalHeaderItem(col).text() == 'Promotion':
-	# 			if self.opData[indexKey]['Promotion'] == 'E0':
-	# 				self.opData[indexKey]['Promotion'] = 'E1'
-	# 				# self.table.setCellWidget(row, col, self.getImageQt('e1.png', self.mSize))
-	# 			elif self.opData[indexKey]['Promotion'] == 'E1' and self.opData[indexKey]['Rarity'] > '3':
-	# 				self.opData[indexKey]['Promotion'] = 'E2'
-	# 				# self.table.setCellWidget(row, col, self.getImageQt('e2.png', self.mSize))
-	# 			elif self.opData[indexKey]['Promotion'] == 'E1' and self.opData[indexKey]['Rarity'] <= '3':
-	# 				self.opData[indexKey]['Promotion'] = 'E0'
-	# 				# self.table.setCellWidget(row, col, self.getImageQt('e0.png', self.mSize))
-	# 			elif self.opData[indexKey]['Promotion'] == 'E2':
-	# 				self.opData[indexKey]['Promotion'] = 'E0'
-	# 				# self.table.setCellWidget(row, col, self.getImageQt('e0.png', self.mSize))
-	# 		elif self.table.horizontalHeaderItem(col).text() == 'Potential':
-	# 			if self.opData[indexKey]['Potential'] >= '1' and self.opData[indexKey]['Potential'] <= '5':
-	# 				self.opData[indexKey]['Potential'] = str(int(self.opData[indexKey]['Potential']) + 1)
-	# 				pot = 'p' + self.opData[indexKey]['Potential'] + '.png'
-	# 				# self.table.setCellWidget(row, col, self.getImageQt(pot, self.mSize))
-	# 			else:
-	# 				self.opData[indexKey]['Potential'] = '1'
-	# 				# self.table.setCellWidget(row, col, self.getImageQt('p1.png', self.mSize))
-	# 		elif self.table.horizontalHeaderItem(col).text() == 'Level':
-	# 			cellValue = self.table.item(row, col).text()
-	# 			opLevel = int(cellValue.split('/')[0])
-	# 			maxLevel = int(cellValue.split('/')[1])
-
-	# 			cBox = QtWidgets.QComboBox()
-	# 			for i in range(1, maxLevel + 1):
-	# 				cBox.addItem(str(i))
-	# 			cBox.setCurrentIndex(opLevel - 1)
-	# 			self.table.setCellWidget(row, col, cBox)
-
-	# 			# while cBox.isVisible():
-	# 			# 	level = cBox.currentText()
-				
-
-
-
-				
-	# 		self.opData = changeStatsToFit(self.opData)
-	# 		# self.initDemoTable()
-	# 		# print(self.opData[indexKey])
 
 	def getImageQt(self, path, scale):
 		label = QLabel(self)
@@ -910,15 +763,37 @@ class rosterTable(QMainWindow):
 
 #--------------------------------------------------------------------------------------------------------------
 
-w = 356
-h = 393
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#--------------------------------------------------------------------------------------------------------------
 
 class mainWindow(QMainWindow):
 	def __init__(self):
 		super(mainWindow, self).__init__()
 		self.setStyleSheet(style)
-		self.setGeometry(0 , 0, w, h)
-		self.setFixedSize(w, h)
+		self.setGeometry(0 , 0, 356, 393)
+		self.setFixedSize(356, 393)
 		self.setWindowTitle('Fotometta')
 		self.setWindowIcon(QtGui.QIcon('ui_asset/taskbaricon.ico'))
 
@@ -934,7 +809,7 @@ class mainWindow(QMainWindow):
 		self.iconLabel.setAlignment(Qt.AlignCenter)
 		self.icon = QPixmap('ui_asset/icon.png')
 		self.iconLabel.setPixmap(self.icon)
-		self.iconLabel.resize(w, self.icon.height())
+		self.iconLabel.resize(356, self.icon.height())
 
 		self.openRosterButton = QtWidgets.QPushButton('Open Roster', self)
 		self.openRosterButton.setStyleSheet("QPushButton { font-size: 15px; }")
@@ -1012,13 +887,24 @@ class mainWindow(QMainWindow):
 
 				finalData = {}
 				fileNum = 0
+				fileNames = []
 
 				for i in os.listdir('fotometta_input'):
 					fileNum += 1
+					fileNames.append(i)
 
-				with concurrent.futures.ThreadPoolExecutor() as executor:
+				thread = QThread()
+				pd = progressWindow()
+				pd.show()
+
+				pd.moveToThread(thread)
+
+				with concurrent.futures.ThreadPoolExecutor(max_workers = 4) as executor:
 					cfResults = [executor.submit(arkAssist, i, nameReader) for i in os.listdir('fotometta_input')]
 					key = 0
+
+					for future in cfResults:
+   						future.add_done_callback(progress_indicator)
 
 					for f in concurrent.futures.as_completed(cfResults):
 						key += 1
@@ -1043,11 +929,17 @@ class mainWindow(QMainWindow):
 
 			finalData = {}
 
-			with concurrent.futures.ThreadPoolExecutor() as executor:
+			pd = progressDialogue()
+			pd.show()
+
+			with concurrent.futures.ThreadPoolExecutor(max_workers = 4) as executor:
 				cfResults = [executor.submit(arkAssist, i, nameReader) for i in os.listdir('fotometta_input')]
 
 				if os.stat('fotometta_output/output_dict.txt').st_size == 0:
 					key = 0
+
+					for future in cfResults:
+   						future.add_done_callback(progress_indicator)
 
 					for f in concurrent.futures.as_completed(cfResults):
 						key += 1
@@ -1056,6 +948,9 @@ class mainWindow(QMainWindow):
 				else:
 					jsonTable = json.loads(open('fotometta_output/output_dict.txt', 'r').read())
 					key = len(jsonTable.keys())
+
+					for future in cfResults:
+   						future.add_done_callback(progress_indicator)
 					
 					for f in concurrent.futures.as_completed(cfResults):
 						key += 1
@@ -1089,12 +984,13 @@ class mainWindow(QMainWindow):
 		self.close()
 
 #--------------------------------------------------------------------------------------------------------------
-#--------------------------------------------------------------------------------------------------------------
 
 def startup():
 	app = QApplication(sys.argv)
 	QApplication.instance().setFont(font)
 	win = mainWindow()
+
+	opToText()
 
 	win.show()
 	sys.exit(app.exec_())

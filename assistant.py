@@ -29,35 +29,28 @@ def arkAssist(input, nameReader):
 
 	sample = input
 
-	roster = cv.imread('fotometta_input/' + sample, 0)
 	rosterCopy = cv.imread('fotometta_input/' + sample)
-	faceRef = cv.imread('operator_icon/chenskin1.jpg', 0)
-	faceMatch = 0
-
 	rosterDim = rosterCopy.shape
-	leftSide = rosterCopy[0:int(rosterDim[0]), 0:int(rosterDim[1] / 2)]
+	nameSide = rosterCopy[int(rosterDim[0] / 3) * 2:int(rosterDim[0]), 0:int(rosterDim[1] / 2)]
 	rightSide = rosterCopy[0:int(rosterDim[0]), int(rosterDim[1] / 2):int(rosterDim[1])]
+	levelCorner = rosterCopy[0:int(rosterDim[0] / 3) - 30, int(rosterDim[1] / 2):int(rosterDim[1])]
 
-	readName = leftSide
-	readName = cv.cvtColor(readName, cv.COLOR_BGR2GRAY)
-	ret, nameThresh = cv.threshold(readName, 200, 255, cv.THRESH_BINARY)
+	nameSide = cv.cvtColor(nameSide, cv.COLOR_BGR2GRAY)
+	ret, nameThresh = cv.threshold(nameSide, 200, 255, cv.THRESH_BINARY)
 	nameList = nameReader.readtext(nameThresh, detail = 0)
-	nameList2 = nameReader.readtext(readName, detail = 0)
-	readSkills = rightSide
-	skillList = nameReader.readtext(readSkills)
+	nameList2 = nameReader.readtext(nameSide, detail = 0)
+	levels = nameReader.readtext(levelCorner)
 
 #--------------------------------------------------------------------------------------------------------------
 
 	datajson = json.load(open('json_files/character_table.json', encoding = "utf8"))
 	opList = []
-	rarityList = []
 	nameMatch = 0
 	rarityIndex = 0
 
 	for key in list(datajson):
 		if datajson[key]['subProfessionId'] != 'notchar1' and datajson[key]['subProfessionId'] != 'notchar2':
 			opList.append(datajson[key]['name'])
-			rarityList.append(datajson[key]['rarity'])
 
 	for name in nameList:
 		if name != 'Ranged' and name != 'Range' and name != 'DPS' and name != 'Slow' and name != 'Trust':
@@ -81,78 +74,60 @@ def arkAssist(input, nameReader):
 
 # READ PROMOTION-----------------------------------------------------------------------------------------------
 
-	promoProb, eliteProb = 0, 0
-	promoDim = [0, 0]
+	promoTemp = cv.cvtColor(rightSide, cv.COLOR_BGR2GRAY)
+	eliteProb = 0
 
-	for (bbox, text, prob) in skillList:
-		(tl, tr, br, bl) = bbox
+	for e in os.listdir('image_matching/elite_icon'):
+		elite = cv.imread('image_matching/elite_icon/' + e, 0)
 
-		if promoProb < fuzz.partial_ratio(text, 'Promotion'):
-			promoProb = fuzz.partial_ratio(text, 'Promotion')
-			promoDim = [(int(tl[0] + 70), int(tl[1]) - 40), (int(br[0] + 110), int(br[1] + 30))]
+		for x in range(-5, 5):
+			eliteResize = cv.resize(elite, (0, 0), fx = 1 - 0.1 * x, fy = 1 - 0.1 * x)
 
-	if promoDim == [0, 0]:
-		opPromotion = 'Unrecognized'
-	else: 
-		croppedPromo = rightSide[promoDim[0][1]:promoDim[1][1], promoDim[0][0]:promoDim[1][0]]
-		croppedPromo = cv.cvtColor(croppedPromo, cv.COLOR_BGR2GRAY)
+			if eliteResize.shape[0] < promoTemp.shape[0] and eliteResize.shape[1] < promoTemp.shape[1]:
+				eliteComp = cv.matchTemplate(promoTemp, eliteResize, cv.TM_CCORR_NORMED)
 
-		for e in os.listdir('image_matching/elite_icon'):
-			elite = cv.imread('image_matching/elite_icon/' + e, 0)
-
-			for x in range(-5, 5):
-				eResize = cv.resize(elite, (0, 0), fx = 1 - 0.1 * x, fy = 1 - 0.1 * x)
-
-				if eResize.shape[0] < croppedPromo.shape[0] and eResize.shape[1] < croppedPromo.shape[1]:
-					eliteComp = cv.matchTemplate(croppedPromo, eResize, cv.TM_CCORR_NORMED)
-
-					if np.amax(eliteComp) > np.amax(eliteProb):
-						eliteProb = eliteComp
-						opPromotion = e[:-4].upper()
+				if np.amax(eliteComp) > np.amax(eliteProb):
+					eliteProb = eliteComp
+					opPromotion = e[:-4].upper()
 
 # READ SKILL MASTERY-------------------------------------------------------------------------------------------
 
+	rank = cv.imread('image_matching/mastery_icon/rank.jpg', 0)
 	rankProb = 0
-	rankDim = [0, 0]
 
-	for (bbox, text, prob) in skillList:
-		(tl, tr, br, bl) = bbox
+	for x in range(-5, 5):
+		rankResize = cv.resize(rank, (0, 0), fx = 1 - 0.1 * x, fy = 1 - 0.1 * x)
 
-		if rankProb < fuzz.ratio(text, 'RANK'):
-			rankProb = fuzz.ratio(text, 'RANK')
-			rankDim = [(int(tl[0] - 5), int(tl[1]) - 10), (int(br[0] + 20), int(br[1] + 5))]
+		if rankResize.shape[0] < rightSide.shape[0] and rankResize.shape[1] < rightSide.shape[1]:
+			rankTemp = cv.cvtColor(rightSide, cv.COLOR_BGR2GRAY)
+			rankComp = cv.matchTemplate(rankTemp, rankResize, cv.TM_CCORR_NORMED)
 
-	croppedRank = rightSide[rankDim[0][1]:rankDim[1][1], rankDim[0][0]:rankDim[1][0]]
-	ret, rankThresh = cv.threshold(croppedRank, 127, 255, cv.THRESH_BINARY)
-	tessImg = cv.cvtColor(rankThresh, cv.COLOR_BGR2GRAY)
-	tessImg2 = cv.cvtColor(croppedRank, cv.COLOR_BGR2GRAY)
-	skillRank = pytesseract.image_to_string(tessImg, config = '')
-	skillRank2 = pytesseract.image_to_string(tessImg2, config = '')
-	skillRank = skillRank.rstrip()
-	skillRank2 = skillRank2.rstrip()
+			if np.amax(rankComp) > np.amax(rankProb):
+				rankProb = rankComp
+				min_val, max_val, min_loc, max_loc = cv.minMaxLoc(rankComp)
+				location = max_loc
+				h, w = rankResize.shape
 
-	if skillRank[-1] == ']' or skillRank[-1] == '|':
+	bottom_right = (location[0] + w + 40, location[1] + h + 5)    
+	rankImg = rightSide[location[1]:bottom_right[1], location[0]:bottom_right[0]]
+	ret, rankThresh = cv.threshold(rankImg, 127, 255, cv.THRESH_BINARY)
+
+	# skillRank = pytesseract.image_to_string(rankThresh, config = '--psm 7').rstrip()
+	skillRank = nameReader.readtext(rankThresh, detail = 0)
+	skillRank = skillRank[0]
+	# print()
+	if skillRank[-1] == '|' or skillRank[-1] == ']' or skillRank == 'RANK':
 		skillRank = 'RANK 1'
 
-	if skillRank2[-1] == ']' or skillRank2[-1] == '|':
-		skillRank2 = 'RANK 1'
-
-	if any(char.isdigit() for char in skillRank2) == True and any(char.isdigit() for char in skillRank) == False:
-		skillRank = skillRank2
-	elif any(char.isdigit() for char in skillRank2) == True and any(char.isdigit() for char in skillRank) == True:
-		if int(skillRank2[-1]) > int(skillRank[-1]):
-			skillRank = skillRank2
-
-	if skillRank == 'RANK 7' and opRarity > 2 and opPromotion == 'E2':
-		croppedMastery = rightSide[(rankDim[0][1] - 20):(rankDim[1][1] + 20), (rankDim[0][0] + 80):(rankDim[1][0] + 240)]
-		croppedMastery = cv.cvtColor(croppedMastery, cv.COLOR_BGR2GRAY)
-		imLength = croppedMastery.shape[1]
+	if skillRank == 'RANK 7' and opRarity > 3 and opPromotion == 'E2':
+		masteryTemp = cv.cvtColor(rightSide, cv.COLOR_BGR2GRAY)
+		masteries = masteryTemp[location[1] - 20:bottom_right[1] + 20, location[0] + 50:bottom_right[0] + 240]
+		imLength = masteries.shape[1]
 		divide3 = int(imLength / 3)
-		s1 = croppedMastery[0:croppedMastery.shape[0], 0:divide3]
-		s2 = croppedMastery[0:croppedMastery.shape[0], divide3 + 1:2 * divide3]
-		s3 = croppedMastery[0:croppedMastery.shape[0], 2 * divide3 + 1:3 * divide3]
+		s1 = masteries[0:masteries.shape[0], 0:divide3]
+		s2 = masteries[0:masteries.shape[0], divide3 + 1:2 * divide3]
+		s3 = masteries[0:masteries.shape[0], 2 * divide3 + 1:3 * divide3]
 		s1Match, s2Match, s3Match = 0, 0, 0
-		s1m, s2m, s3m = '', '', ''
 
 		for m in os.listdir('image_matching/mastery_icon'):
 			mastery = cv.imread('image_matching/mastery_icon/' + m, 0)
@@ -168,11 +143,9 @@ def arkAssist(input, nameReader):
 					if np.amax(s1Comp) > np.amax(s1Match):
 						s1Match = s1Comp
 						s1m = m
-
 					if np.amax(s2Comp) > np.amax(s2Match):
 						s2Match = s2Comp
 						s2m = m
-
 					if np.amax(s3Comp) > np.amax(s3Match):
 						s3Match = s3Comp
 						s3m = m
@@ -183,41 +156,28 @@ def arkAssist(input, nameReader):
 
 # READ POTENTIAL-----------------------------------------------------------------------------------------------
 
-	potProb, potNum = 0, 0
-	potDim = [0, 0]
+	croppedPot = cv.cvtColor(rightSide, cv.COLOR_BGR2GRAY)
+	potNum = 0
 
-	for (bbox, text, prob) in skillList:
-		(tl, tr, br, bl) = bbox
+	for p in os.listdir('image_matching/potential_icon'):
+		potential = cv.imread('image_matching/potential_icon/' + p, 0)
 
-		if potProb < fuzz.partial_ratio(text, 'Potential'):
-			potProb = fuzz.partial_ratio(text, 'Potential')
-			potDim = [(int(tl[0] + 40), int(tl[1]) - 80), (int(br[0] + 140), int(br[1] + 70))]
+		for x in range(-5, 5):
+			pResize = cv.resize(potential, (0, 0), fx = 1 - 0.1 * x, fy = 1 - 0.1 * x)
 
-	if potDim == [0 ,0]:
-		opPotential = -1
-	else: 
-		croppedPot = rightSide[potDim[0][1]:potDim[1][1], potDim[0][0]:potDim[1][0]]
-		croppedPot = cv.cvtColor(croppedPot, cv.COLOR_BGR2GRAY)
+			if pResize.shape[0] < croppedPot.shape[0] and pResize.shape[1] < croppedPot.shape[1]:
+				potComp = cv.matchTemplate(croppedPot, pResize, cv.TM_CCORR_NORMED)
 
-		for p in os.listdir('image_matching/potential_icon'):
-			potential = cv.imread('image_matching/potential_icon/' + p, 0)
-
-			for x in range(-5, 5):
-				pResize = cv.resize(potential, (0, 0), fx = 1 - 0.1 * x, fy = 1 - 0.1 * x)
-
-				if pResize.shape[0] < croppedPot.shape[0] and pResize.shape[1] < croppedPot.shape[1]:
-					potComp = cv.matchTemplate(croppedPot, pResize, cv.TM_CCORR_NORMED)
-
-					if np.amax(potComp) > np.amax(potNum):
-						potNum = potComp
-						opPotential = p[:-4]
+				if np.amax(potComp) > np.amax(potNum):
+					potNum = potComp
+					opPotential = p[:-4]
 
 # READ LEVEL---------------------------------------------------------------------------------------------------
 
 	lvProb1, lvProb2, lvNum, lvtemp = 0, 0, 1, ''
 	lvDim = [0, 0]
 
-	for (bbox, text, prob) in skillList:
+	for (bbox, text, prob) in levels:
 		(tl, tr, br, bl) = bbox
 
 		if lvProb1 < fuzz.partial_ratio(text, 'EXP'):
@@ -225,7 +185,7 @@ def arkAssist(input, nameReader):
 			lvDim = [(int(tl[0] - 130), int(tl[1]) - 40), (int(br[0] - 30), int(br[1] + 50))]
 
 	if lvProb1 < 0.9:
-		for (bbox, text, prob) in skillList:
+		for (bbox, text, prob) in levels:
 			(tl, tr, br, bl) = bbox
 
 			for lv in range(1, 90):
@@ -271,19 +231,26 @@ def arkAssist(input, nameReader):
 
 # READ MODULE--------------------------------------------------------------------------------------------------
 
-	modProb, modtemp = 0, ''
-	modDim = [0, 0]
+	modDim = rightSide.shape
+	modTemplate = cv.imread('image_matching/module_icon/template.jpg', 0)
+	modTemp = rightSide[int(modDim[0] / 2):int(modDim[0]), 0:modDim[1]]
+	modTemp = cv.cvtColor(modTemp, cv.COLOR_BGR2GRAY)
+	modProb = 0
 
-	for (bbox, text, prob) in skillList:
-		(tl, tr, br, bl) = bbox
+	for x in range(-5, 5):
+		modText = cv.resize(modTemplate, (0, 0), fx = 1 - 0.1 * x, fy = 1 - 0.1 * x)
 
-		if modProb < fuzz.ratio(text, 'Module'):
-			modProb = fuzz.ratio(text, 'Module')
-			modDim = [(int(tl[0] + 20), int(tl[1]) - 80), (int(br[0] + 170), int(br[1] + 80))]
+		if modText.shape[0] < modTemp.shape[0] and modText.shape[1] < modTemp.shape[1]:
+			modTextComp = cv.matchTemplate(modTemp, modText, cv.TM_CCORR_NORMED)
 
-	croppedMod = rightSide[modDim[0][1]:modDim[1][1], modDim[0][0]:modDim[1][0]]
-	croppedMod = cv.cvtColor(croppedMod, cv.COLOR_BGR2GRAY)
+			if np.amax(modTextComp) > np.amax(modProb):
+				modProb = modTextComp
+				min_val, max_val, min_loc, max_loc = cv.minMaxLoc(modTextComp)
+				location = max_loc
+				h, w = modText.shape
 
+	bottom_right = (location[0] + w + 90, location[1] + h + 20)   
+	croppedMod = modTemp[location[1] - 20:bottom_right[1], location[0] + 90:bottom_right[0]]
 	modProb = 0
 
 	for m in os.listdir('image_matching/module_icon'):
@@ -297,11 +264,9 @@ def arkAssist(input, nameReader):
 
 				if np.amax(modComp) > modProb:
 					modProb = np.amax(modComp)
-					modtemp = m
+					opModule = m
 
-	print(modtemp)
-
-	if modtemp == 'originalmodule.jpg' or modtemp == 'nomodule.jpg':
+	if opModule == 'originalmodule.jpg' or opModule == 'nomodule.jpg':
 		opModule = 'None'
 	else:
 		opModule = 'True'
@@ -321,7 +286,7 @@ def arkAssist(input, nameReader):
 		opInput[6] = ""
 
 	opDict = {}
-	print(dict(zip(opFields, opInput)))
+	# print(dict(zip(opFields, opInput)))
 	return dict(zip(opFields, opInput))
 
 #--------------------------------------------------------------------------------------------------------------
@@ -560,3 +525,15 @@ def changeStatsToFit(d):
 			d[key]['Skill'] = 'RANK 4'
 
 	return d
+
+def opToText():
+	datajson = json.load(open('json_files/character_table.json', encoding = "utf8"))
+	names = []
+
+	for key in list(datajson):
+		if datajson[key]['subProfessionId'] != 'notchar1' and datajson[key]['subProfessionId'] != 'notchar2':
+			names.append(datajson[key]['name'])
+
+	with open('json_files/character_names.txt', 'w') as file:
+		for name in names:
+			file.write('%s\n' % name)
