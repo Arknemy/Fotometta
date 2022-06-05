@@ -893,11 +893,11 @@ class mainWindow(QMainWindow):
 					fileNum += 1
 					fileNames.append(i)
 
-				thread = QThread()
-				pd = progressWindow()
-				pd.show()
+				# thread = QThread()
+				# pd = progressWindow()
+				# pd.show()
 
-				pd.moveToThread(thread)
+				# pd.moveToThread(thread)
 
 				with concurrent.futures.ThreadPoolExecutor(max_workers = 4) as executor:
 					cfResults = [executor.submit(arkAssist, i, nameReader) for i in os.listdir('fotometta_input')]
@@ -929,8 +929,8 @@ class mainWindow(QMainWindow):
 
 			finalData = {}
 
-			pd = progressDialogue()
-			pd.show()
+			# pd = progressDialogue()
+			# pd.show()
 
 			with concurrent.futures.ThreadPoolExecutor(max_workers = 4) as executor:
 				cfResults = [executor.submit(arkAssist, i, nameReader) for i in os.listdir('fotometta_input')]
