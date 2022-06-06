@@ -8,9 +8,6 @@ import easyocr
 import json
 from fuzzywuzzy import fuzz
 from fuzzywuzzy import process
-import pytesseract
-
-# pytesseract.pytesseract.tesseract_cmd = 'Tesseract-OCR/tesseract.exe'
 
 def arkAssist(input, nameReader):
 	opName = ""
@@ -92,32 +89,27 @@ def arkAssist(input, nameReader):
 
 # READ SKILL MASTERY-------------------------------------------------------------------------------------------
 
-	rank = cv.imread('image_matching/mastery_icon/rank.jpg', 0)
 	rankProb = 0
 
-	for x in range(-5, 5):
-		rankResize = cv.resize(rank, (0, 0), fx = 1 - 0.1 * x, fy = 1 - 0.1 * x)
+	for r in os.listdir('image_matching/mastery_icon'):
+		if r[0] != 'm':
+			rank = cv.imread('image_matching/mastery_icon/' + r, 0)
 
-		if rankResize.shape[0] < rightSide.shape[0] and rankResize.shape[1] < rightSide.shape[1]:
-			rankTemp = cv.cvtColor(rightSide, cv.COLOR_BGR2GRAY)
-			rankComp = cv.matchTemplate(rankTemp, rankResize, cv.TM_CCORR_NORMED)
+			for x in range(-5, 5):
+				rankResize = cv.resize(rank, (0, 0), fx = 1 - 0.1 * x, fy = 1 - 0.1 * x)
 
-			if np.amax(rankComp) > np.amax(rankProb):
-				rankProb = rankComp
-				min_val, max_val, min_loc, max_loc = cv.minMaxLoc(rankComp)
-				location = max_loc
-				h, w = rankResize.shape
+				if rankResize.shape[0] < rightSide.shape[0] and rankResize.shape[1] < rightSide.shape[1]:
+					rankTemp = cv.cvtColor(rightSide, cv.COLOR_BGR2GRAY)
+					rankComp = cv.matchTemplate(rankTemp, rankResize, cv.TM_CCORR_NORMED)
 
-	bottom_right = (location[0] + w + 40, location[1] + h + 5)    
-	rankImg = rightSide[location[1]:bottom_right[1], location[0]:bottom_right[0]]
-	ret, rankThresh = cv.threshold(rankImg, 127, 255, cv.THRESH_BINARY)
+					if np.amax(rankComp) > np.amax(rankProb):
+						rankProb = rankComp
+						skillRank = r[:-4].upper()
+						min_val, max_val, min_loc, max_loc = cv.minMaxLoc(rankComp)
+						location = max_loc
+						h, w = rankResize.shape
 
-	# skillRank = pytesseract.image_to_string(rankThresh, config = '--psm 7').rstrip()
-	skillRank = nameReader.readtext(rankThresh, detail = 0)
-	skillRank = skillRank[0]
-	# print()
-	if skillRank[-1] == '|' or skillRank[-1] == ']' or skillRank == 'RANK':
-		skillRank = 'RANK 1'
+	bottom_right = (location[0] + w, location[1] + h)    
 
 	if skillRank == 'RANK 7' and opRarity > 3 and opPromotion == 'E2':
 		masteryTemp = cv.cvtColor(rightSide, cv.COLOR_BGR2GRAY)
@@ -130,25 +122,26 @@ def arkAssist(input, nameReader):
 		s1Match, s2Match, s3Match = 0, 0, 0
 
 		for m in os.listdir('image_matching/mastery_icon'):
-			mastery = cv.imread('image_matching/mastery_icon/' + m, 0)
+			if m[0] != 'r':
+				mastery = cv.imread('image_matching/mastery_icon/' + m, 0)
 
-			for x in range(-5, 5):
-				mResize = cv.resize(mastery, (0, 0), fx = 1 - 0.1 * x, fy = 1 - 0.1 * x)
+				for x in range(-5, 5):
+					mResize = cv.resize(mastery, (0, 0), fx = 1 - 0.1 * x, fy = 1 - 0.1 * x)
 
-				if mResize.shape[0] < s1.shape[0] and mResize.shape[1] < s1.shape[1]:
-					s1Comp = cv.matchTemplate(s1, mResize, cv.TM_CCORR_NORMED)
-					s2Comp = cv.matchTemplate(s2, mResize, cv.TM_CCORR_NORMED)
-					s3Comp = cv.matchTemplate(s3, mResize, cv.TM_CCORR_NORMED)
+					if mResize.shape[0] < s1.shape[0] and mResize.shape[1] < s1.shape[1]:
+						s1Comp = cv.matchTemplate(s1, mResize, cv.TM_CCORR_NORMED)
+						s2Comp = cv.matchTemplate(s2, mResize, cv.TM_CCORR_NORMED)
+						s3Comp = cv.matchTemplate(s3, mResize, cv.TM_CCORR_NORMED)
 
-					if np.amax(s1Comp) > np.amax(s1Match):
-						s1Match = s1Comp
-						s1m = m
-					if np.amax(s2Comp) > np.amax(s2Match):
-						s2Match = s2Comp
-						s2m = m
-					if np.amax(s3Comp) > np.amax(s3Match):
-						s3Match = s3Comp
-						s3m = m
+						if np.amax(s1Comp) > np.amax(s1Match):
+							s1Match = s1Comp
+							s1m = m
+						if np.amax(s2Comp) > np.amax(s2Match):
+							s2Match = s2Comp
+							s2m = m
+						if np.amax(s3Comp) > np.amax(s3Match):
+							s3Match = s3Comp
+							s3m = m
 
 		opS1 = s1m[:-4].upper()
 		opS2 = s2m[:-4].upper()
@@ -209,25 +202,25 @@ def arkAssist(input, nameReader):
 
 	lvtemp = re.sub("[^0-9]", "", lvtemp)
 	opLevel = int(lvtemp)
-	maxLevel = 90
+	maxLevel = getMaxLevel(opPromotion, opRarity)
 
-	if opRarity == 5 and opPromotion == 'E1' or opRarity == 4 and opPromotion == 'E2':
-		maxLevel = 80
-	elif opRarity == 4 and opPromotion == 'E1' or opRarity == 3 and opPromotion == 'E2':
-		maxLevel = 70
-	elif opRarity == 3 and opPromotion == 'E1':
-		maxLevel = 60
-	elif opRarity == 2 and opPromotion == 'E1':
-		maxLevel = 55
-	elif opRarity == 5 and opPromotion == 'E0' or opRarity == 4 and opPromotion == 'E0':
-		maxLevel = 50
-	elif opRarity == 3 and opPromotion == 'E0':
-		maxLevel = 45
-	elif opRarity == 2 and opPromotion == 'E0':
-		maxLevel = 40
-	elif opRarity == 1 or opRarity == 0:
-		opPromotion = 'E0'
-		maxLevel = 30
+	# if opRarity == 5 and opPromotion == 'E1' or opRarity == 4 and opPromotion == 'E2':
+	# 	maxLevel = 80
+	# elif opRarity == 4 and opPromotion == 'E1' or opRarity == 3 and opPromotion == 'E2':
+	# 	maxLevel = 70
+	# elif opRarity == 3 and opPromotion == 'E1':
+	# 	maxLevel = 60
+	# elif opRarity == 2 and opPromotion == 'E1':
+	# 	maxLevel = 55
+	# elif opRarity == 5 and opPromotion == 'E0' or opRarity == 4 and opPromotion == 'E0':
+	# 	maxLevel = 50
+	# elif opRarity == 3 and opPromotion == 'E0':
+	# 	maxLevel = 45
+	# elif opRarity == 2 and opPromotion == 'E0':
+	# 	maxLevel = 40
+	# elif opRarity == 1 or opRarity == 0:
+	# 	opPromotion = 'E0'
+	# 	maxLevel = 30
 
 # READ MODULE--------------------------------------------------------------------------------------------------
 
@@ -249,22 +242,23 @@ def arkAssist(input, nameReader):
 				location = max_loc
 				h, w = modText.shape
 
-	bottom_right = (location[0] + w + 90, location[1] + h + 20)   
+	bottom_right = (location[0] + w + 120, location[1] + h + 20)
 	croppedMod = modTemp[location[1] - 20:bottom_right[1], location[0] + 90:bottom_right[0]]
 	modProb = 0
 
 	for m in os.listdir('image_matching/module_icon'):
-		modImg = cv.imread('image_matching/module_icon/' + m, 0)
+		if m != 'template.jpg':
+			modImg = cv.imread('image_matching/module_icon/' + m, 0)
 
-		for x in range(-5, 5):
-			modResize = cv.resize(modImg, (0, 0), fx = 1 - 0.1 * x, fy = 1 - 0.1 * x)
+			for x in range(-5, 5):
+				modResize = cv.resize(modImg, (0, 0), fx = 1 - 0.1 * x, fy = 1 - 0.1 * x)
 
-			if modResize.shape[0] < croppedMod.shape[0] and modResize.shape[1] < croppedMod.shape[1]:
-				modComp = cv.matchTemplate(croppedMod, modResize, cv.TM_CCORR_NORMED)
+				if modResize.shape[0] < croppedMod.shape[0] and modResize.shape[1] < croppedMod.shape[1]:
+					modComp = cv.matchTemplate(croppedMod, modResize, cv.TM_CCORR_NORMED)
 
-				if np.amax(modComp) > modProb:
-					modProb = np.amax(modComp)
-					opModule = m
+					if np.amax(modComp) > modProb:
+						modProb = np.amax(modComp)
+						opModule = m
 
 	if opModule == 'originalmodule.jpg' or opModule == 'nomodule.jpg':
 		opModule = 'None'

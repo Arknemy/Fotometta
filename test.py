@@ -8,9 +8,6 @@ import easyocr
 import json
 from fuzzywuzzy import fuzz
 from fuzzywuzzy import process
-import pytesseract
-
-# pytesseract.pytesseract.tesseract_cmd = 'Tesseract-OCR/tesseract.exe'
 
 opName = ""
 opRarity = 0
@@ -23,6 +20,10 @@ opS1 = ""
 opS2 = ""
 opS3 = ""
 opModule = "True"
+
+def inverte(imagem, name):
+    imagem = (255-imagem)
+    cv.imwrite(name, imagem)
 
 #--------------------------------------------------------------------------------------------------------------
 nameReader = easyocr.Reader(['en'])
@@ -42,31 +43,45 @@ for i in os.listdir('fotometta_input'):
 
 #--------------------------------------------------------------------------------------------------------------
 	
-	rank = cv.imread('image_matching/mastery_icon/rank.jpg', 0)
 	rankProb = 0
 
-	for x in range(-5, 5):
-		rankResize = cv.resize(rank, (0, 0), fx = 1 - 0.1 * x, fy = 1 - 0.1 * x)
+	for r in os.listdir('image_matching/mastery_icon'):
+		if r[0] != 'm':
+			rank = cv.imread('image_matching/mastery_icon/' + r, 0)
 
-		if rankResize.shape[0] < rightSide.shape[0] and rankResize.shape[1] < rightSide.shape[1]:
-			rankComp = cv.matchTemplate(rightSide, rankResize, cv.TM_CCORR_NORMED)
+			for x in range(-5, 5):
+				rankResize = cv.resize(rank, (0, 0), fx = 1 - 0.1 * x, fy = 1 - 0.1 * x)
 
-			if np.amax(rankComp) > np.amax(rankProb):
-				rankProb = rankComp
-				min_val, max_val, min_loc, max_loc = cv.minMaxLoc(rankComp)
-				location = max_loc
-				h, w = rankResize.shape
+				if rankResize.shape[0] < rightSide.shape[0] and rankResize.shape[1] < rightSide.shape[1]:
+					rankComp = cv.matchTemplate(rightSide, rankResize, cv.TM_CCORR_NORMED)
 
-	bottom_right = (location[0] + w + 40, location[1] + h + 5)    
-	rankImg = rightSide[location[1]:bottom_right[1], location[0]:bottom_right[0]]
-	ret, rankThresh = cv.threshold(rankImg, 127, 255, cv.THRESH_BINARY)
+					if np.amax(rankComp) > np.amax(rankProb):
+						rankProb = rankComp
+						skillRank = r[:-4].upper()
+						min_val, max_val, min_loc, max_loc = cv.minMaxLoc(rankComp)
+						location = max_loc
+						h, w = rankResize.shape
 
-	# plt.imshow(rankThresh)
-	# plt.waitforbuttonpress()
-	# plt.close()
+	bottom_right = (location[0] + w, location[1] + h)    
 
-	rankRead = nameReader.readtext(rankThresh, detail = 0)
-	print(rankRead)
+	plt.imshow(rankImg)
+	plt.waitforbuttonpress()
+	plt.close()
+
+	print(skillRank)
+
+	# if skillRank == 'RANK 7':
+	# 	masteryTemp = cv.cvtColor(rightSide, cv.COLOR_BGR2GRAY)
+	# 	masteries = masteryTemp[location[1] - 20:bottom_right[1] + 20, location[0] + 50:bottom_right[0] + 240]
+	# 	imLength = masteries.shape[1]
+	# 	divide3 = int(imLength / 3)
+	# 	s1 = masteries[0:masteries.shape[0], 0:divide3]
+	# 	s2 = masteries[0:masteries.shape[0], divide3 + 1:2 * divide3]
+	# 	s3 = masteries[0:masteries.shape[0], 2 * divide3 + 1:3 * divide3]
+
+	# 	plt.imshow(masteries)
+	# 	plt.waitforbuttonpress()
+	# 	plt.close()
 
 	# for m in os.listdir('image_matching/module_icon'):
 	# 	modImg = cv.imread('image_matching/module_icon/' + m, 0)

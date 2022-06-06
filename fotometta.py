@@ -9,6 +9,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from os import listdir
 from fuzzywuzzy import fuzz
+from functools import partial
 from assistant import *
 
 from PyQt5 import QtWidgets, QtGui, QtCore
@@ -33,10 +34,11 @@ userRoster = []
 #--------------------------------------------------------------------------------------------------------------
 
 def progress_indicator(future):
-   	print('.', end = '', flush = True)
+	print('.', end = '', flush = True)
 
 def initOpList():
 	opList.clear()
+
 	rarityList.clear()
 
 	for key in list(datajson):
@@ -94,12 +96,12 @@ class addOpWindow(QMainWindow):
 				break;
 
 		for key, value in modulejson.items():
-		    if key != 'missionList' and key != 'subProfDict' and key != 'charEquip':
-		        for key2, value2 in modulejson[key].items():
-		            if modulejson[key][key2]['uniEquipIcon'] == 'original':
-		                self.hasModule.append(modulejson[key][key2]['uniEquipName'][:-8])
-		            elif modulejson[key][key2]['uniEquipIcon'] != 'original':
-		                self.modName.append(modulejson[key][key2]['typeIcon'])
+			if key != 'missionList' and key != 'subProfDict' and key != 'charEquip':
+				for key2, value2 in modulejson[key].items():
+					if modulejson[key][key2]['uniEquipIcon'] == 'original':
+						self.hasModule.append(modulejson[key][key2]['uniEquipName'][:-8])
+					elif modulejson[key][key2]['uniEquipIcon'] != 'original':
+						self.modName.append(modulejson[key][key2]['typeIcon'])
 
 		self.maxLevel = getMaxLevel(self.opPromotion, int(self.opRarity))
 
@@ -622,7 +624,7 @@ class rosterTable(QMainWindow):
 		self.filterLabel = QtWidgets.QLabel('Filter', self)
 		self.filterLabel.setFont(QFont('Roboto', 11))
 		self.filterLabel.setFixedWidth(self.width())
-		self.filterLabel.move(8, -1)	
+		self.filterLabel.move(8, -1)
 
 		self.inputText = QLineEdit(self)
 		self.inputText.resize(250, 20)
@@ -763,28 +765,89 @@ class rosterTable(QMainWindow):
 
 #--------------------------------------------------------------------------------------------------------------
 
+class Worker(QObject):
+	finished = pyqtSignal()
+	progress = pyqtSignal()
+	# progress = pyqtSignal(int)
+	
+	def runCreateNew(self, selectedFolder):
+		nameReader = easyocr.Reader(['en'])
+		open('fotometta_output/output_dict.txt', 'w').close()
+		resizeRoster(selectedFolder)
+		finalData = {}
 
+		with concurrent.futures.ThreadPoolExecutor(max_workers = 4) as executor:
+			cfResults = [executor.submit(arkAssist, i, nameReader) for i in os.listdir('fotometta_input')]
+			key = 0
 
+			for future in cfResults:
+				future.add_done_callback(progress_indicator)
 
+			for f in concurrent.futures.as_completed(cfResults):
+				key += 1
+				finalData['sample' + str(key)] = f.result()
+				self.progress.emit()
 
+		finalData = assembleDict(finalData)
 
+		with open('fotometta_output/output_dict.txt', 'w') as file:
+			file.write(json.dumps(finalData))
 
+		self.finished.emit()
 
+	def runUpdateCurrent(self, selectedFolder):
+		nameReader = easyocr.Reader(['en'])
+		resizeRoster(selectedFolder)
+		finalData = {}
 
+		with concurrent.futures.ThreadPoolExecutor(max_workers = 4) as executor:
+			cfResults = [executor.submit(arkAssist, i, nameReader) for i in os.listdir('fotometta_input')]
 
+			if os.stat('fotometta_output/output_dict.txt').st_size == 0:
+				key = 0
 
+				for future in cfResults:
+					future.add_done_callback(progress_indicator)
 
+				for f in concurrent.futures.as_completed(cfResults):
+					key += 1
+					finalData['sample' + str(key)] = f.result()
+					self.progress.emit()
 
+			else:
+				jsonTable = json.loads(open('fotometta_output/output_dict.txt', 'r').read())
+				key = len(jsonTable.keys())
 
+				for future in cfResults:
+					future.add_done_callback(progress_indicator)
+				
+				for f in concurrent.futures.as_completed(cfResults):
+					key += 1
+					finalData['sample' + str(key)] = f.result()
+					self.progress.emit()
 
+		with open('fotometta_output/output_dict.txt', 'r+') as file:
+			if os.stat('fotometta_output/output_dict.txt').st_size == 0:
+				finalData = assembleDict(finalData)
+				file.write(json.dumps(finalData))
+			else:
+				tableData = json.loads(file.read())
+				a1, a2 = [], []
 
+				for entry in tableData:
+					a1.append(tableData[entry])
 
+				for entry in finalData:
+					a2.append(finalData[entry])
 
+				a1.extend(a2)
+				finalData = arrToDict(a1)
+				finalData = assembleDict(finalData)
+				file.seek(0)
+				file.truncate()
+				file.write(json.dumps(finalData))
 
-
-
-
-
+		self.finished.emit()
 
 #--------------------------------------------------------------------------------------------------------------
 
@@ -802,6 +865,8 @@ class mainWindow(QMainWindow):
 		qtRec.moveCenter(centre)
 		self.move(qtRec.topLeft())
 
+		self.progressI = 0
+
 		self.initGUI()
 
 	def initGUI(self):
@@ -810,6 +875,7 @@ class mainWindow(QMainWindow):
 		self.icon = QPixmap('ui_asset/icon.png')
 		self.iconLabel.setPixmap(self.icon)
 		self.iconLabel.resize(356, self.icon.height())
+		self.iconLabel.hide()
 
 		self.openRosterButton = QtWidgets.QPushButton('Open Roster', self)
 		self.openRosterButton.setStyleSheet("QPushButton { font-size: 15px; }")
@@ -845,7 +911,21 @@ class mainWindow(QMainWindow):
 		self.updateExistingButton.move(191, self.icon.height() + 135)
 		self.updateExistingButton.clicked.connect(self.updateExisting)
 
+		self.pBar = QProgressBar(self)
+		self.pBar.setGeometry(38, self.icon.height() + 93, 280, 25)
+		self.pBar.hide()
+
 	def showRoster(self):
+		self.openRosterButton.setEnabled(True)
+		self.folderButton.setEnabled(True)
+		self.createNewButton.setEnabled(True)
+		self.updateExistingButton.setEnabled(True)
+		self.folderText.show()
+		self.folderButton.show()
+		self.pBar.hide()
+		self.progressI = 0
+		self.text1.setText('Select the folder that contains your roster:')
+
 		if os.stat('fotometta_output/output_dict.txt').st_size != 0:
 			self.openRosterWindow = rosterTable()
 			self.openRosterWindow.show()
@@ -857,12 +937,12 @@ class mainWindow(QMainWindow):
 		self.folderText.setText(str(self.folderpath))
 
 	def createNew(self):
-		selectedFolder = self.folderText.text()
+		self.selectedFolder = self.folderText.text()
 
-		if os.path.isdir(selectedFolder) == False:
+		if os.path.isdir(self.selectedFolder) == False:
 			self.folderText.setText('Select a folder first')
 
-		elif os.path.isdir(selectedFolder) == True:
+		elif os.path.isdir(self.selectedFolder) == True:
 			confirm = False
 
 			if os.stat('fotometta_output/output_dict.txt').st_size != 0:
@@ -881,103 +961,63 @@ class mainWindow(QMainWindow):
 					confirm = True
 
 			if os.stat('fotometta_output/output_dict.txt').st_size == 0 or confirm == True:
-				nameReader = easyocr.Reader(['en'])
-				open('fotometta_output/output_dict.txt', 'w').close()
-				resizeRoster(selectedFolder)
+				self.text1.setText('Please wait...')
+				self.progressI = 0
+				self.thread = QThread()
+				self.worker = Worker()
+				self.worker.moveToThread(self.thread)
+				self.thread.started.connect(partial(self.worker.runCreateNew, self.selectedFolder))
+				self.worker.finished.connect(self.worker.deleteLater)
+				self.worker.progress.connect(self.updateProgress)
+				self.thread.finished.connect(self.thread.deleteLater)
+				self.worker.finished.connect(self.thread.quit)
+				self.thread.start()
 
-				finalData = {}
-				fileNum = 0
-				fileNames = []
+				self.openRosterButton.setEnabled(False)
+				self.folderButton.setEnabled(False)
+				self.createNewButton.setEnabled(False)
+				self.updateExistingButton.setEnabled(False)
+				self.folderText.hide()
+				self.folderButton.hide()
+				self.pBar.setValue(0)
+				self.pBar.show()
 
-				for i in os.listdir('fotometta_input'):
-					fileNum += 1
-					fileNames.append(i)
-
-				# thread = QThread()
-				# pd = progressWindow()
-				# pd.show()
-
-				# pd.moveToThread(thread)
-
-				with concurrent.futures.ThreadPoolExecutor(max_workers = 4) as executor:
-					cfResults = [executor.submit(arkAssist, i, nameReader) for i in os.listdir('fotometta_input')]
-					key = 0
-
-					for future in cfResults:
-   						future.add_done_callback(progress_indicator)
-
-					for f in concurrent.futures.as_completed(cfResults):
-						key += 1
-						finalData['sample' + str(key)] = f.result()
-
-				finalData = assembleDict(finalData)
-
-				with open('fotometta_output/output_dict.txt', 'w') as file:
-					file.write(json.dumps(finalData))
-
-				self.showRoster()
+				self.thread.finished.connect(self.showRoster)
 
 	def updateExisting(self):
-		selectedFolder = self.folderText.text()
+		self.selectedFolder = self.folderText.text()
 
-		if os.path.isdir(selectedFolder) == False:
+		if os.path.isdir(self.selectedFolder) == False:
 			self.folderText.setText('Select a folder first')
+		elif os.path.isdir(self.selectedFolder) == True:
+			self.text1.setText('Please wait...')
+			self.thread = QThread()
+			self.worker = Worker()
+			self.worker.moveToThread(self.thread)
+			self.thread.started.connect(partial(self.worker.runUpdateCurrent, self.selectedFolder))
+			self.worker.finished.connect(self.worker.deleteLater)
+			self.worker.progress.connect(self.updateProgress)
+			self.thread.finished.connect(self.thread.deleteLater)
+			self.worker.finished.connect(self.thread.quit)
+			self.thread.start()
 
-		elif os.path.isdir(selectedFolder) == True:
-			nameReader = easyocr.Reader(['en'])
-			resizeRoster(selectedFolder)
+			self.openRosterButton.setEnabled(False)
+			self.folderButton.setEnabled(False)
+			self.createNewButton.setEnabled(False)
+			self.updateExistingButton.setEnabled(False)
+			self.folderText.hide()
+			self.folderButton.hide()
+			self.pBar.setValue(0)
+			self.pBar.show()
 
-			finalData = {}
+			self.thread.finished.connect(self.showRoster)
 
-			# pd = progressDialogue()
-			# pd.show()
-
-			with concurrent.futures.ThreadPoolExecutor(max_workers = 4) as executor:
-				cfResults = [executor.submit(arkAssist, i, nameReader) for i in os.listdir('fotometta_input')]
-
-				if os.stat('fotometta_output/output_dict.txt').st_size == 0:
-					key = 0
-
-					for future in cfResults:
-   						future.add_done_callback(progress_indicator)
-
-					for f in concurrent.futures.as_completed(cfResults):
-						key += 1
-						finalData['sample' + str(key)] = f.result()
-
-				else:
-					jsonTable = json.loads(open('fotometta_output/output_dict.txt', 'r').read())
-					key = len(jsonTable.keys())
-
-					for future in cfResults:
-   						future.add_done_callback(progress_indicator)
-					
-					for f in concurrent.futures.as_completed(cfResults):
-						key += 1
-						finalData['sample' + str(key)] = f.result()
-
-			with open('fotometta_output/output_dict.txt', 'r+') as file:
-				if os.stat('fotometta_output/output_dict.txt').st_size == 0:
-					finalData = assembleDict(finalData)
-					file.write(json.dumps(finalData))
-				else:
-					tableData = json.loads(file.read())
-					a1, a2 = [], []
-
-					for entry in tableData:
-						a1.append(tableData[entry])
-
-					for entry in finalData:
-						a2.append(finalData[entry])
-
-					a1.extend(a2)
-					finalData = arrToDict(a1)
-					finalData = assembleDict(finalData)
-					file.seek(0)
-					file.truncate()
-					file.write(json.dumps(finalData))
-
-			self.showRoster()
+	def updateProgress(self):
+		self.progressI += 1
+		total = 0
+		for i in os.listdir('fotometta_input'):
+			total += 1
+		self.pBar.setValue(int((self.progressI / total) * 100))
 
 	def closeEvent(self, event):
 		QApplication.closeAllWindows()
