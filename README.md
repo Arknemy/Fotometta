@@ -26,8 +26,6 @@ Example roster image:
 ![](https://github.com/Phoenix22809/Fotometta/blob/main/misc/exampleroster.png)
 
 ## Planned Features
-Improving recognition speed;
-
 CN recognition;
 
 Importing roster from output file;
