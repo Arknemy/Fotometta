@@ -9,7 +9,6 @@ Durin
 12F
 Fang
 Vanilla
-Reserve Operator - Melee
 Plume
 Melantha
 Popukar
@@ -18,13 +17,10 @@ Beagle
 Spot
 Kroos
 Adnachiel
-Reserve Operator - Sniper
 Lava
 Hibiscus
 Ansel
-Reserve Operator - Logistics
 Steward
-Reserve Operator - Caster
 Orchid
 Haze
 Gitano

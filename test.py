@@ -41,34 +41,51 @@ for i in os.listdir('fotometta_input'):
 	rightSide = cv.cvtColor(rightSide, cv.COLOR_BGR2GRAY)
 	levelCorner = cv.cvtColor(levelCorner, cv.COLOR_BGR2GRAY)
 
+	levels = nameReader.readtext(levelCorner)
+
 #--------------------------------------------------------------------------------------------------------------
+	opName = 'Amiya'
+	eliteProb = 0
+
+	for e in os.listdir('image_matching/elite_icon'):
+		elite = cv.imread('image_matching/elite_icon/' + e, 0)
+
+		for x in range(-5, 5):
+			eliteResize = cv.resize(elite, (0, 0), fx = 1 - 0.1 * x, fy = 1 - 0.1 * x)
+
+			if eliteResize.shape[0] < rightSide.shape[0] and eliteResize.shape[1] < rightSide.shape[1]:
+				eliteComp = cv.matchTemplate(rightSide, eliteResize, cv.TM_CCORR_NORMED)
+
+				if np.amax(eliteComp) > np.amax(eliteProb):
+					eliteProb = eliteComp
+					opPromotion = e[:-4].upper()
+
 	
-	rankProb = 0
+	print(opPromotion)	
+	# AMIYA ONLY
+	if opName == 'Amiya':
+		amiyaProb = 0
+		classConversion = cv.imread('image_matching/amiya_class/classconver.jpg', 0)
 
-	for r in os.listdir('image_matching/mastery_icon'):
-		if r[0] != 'm':
-			rank = cv.imread('image_matching/mastery_icon/' + r, 0)
+		for x in range(-5, 5):
+			classResize = cv.resize(classConversion, (0, 0), fx = 1 - 0.1 * x, fy = 1 - 0.1 * x)
 
-			for x in range(-5, 5):
-				rankResize = cv.resize(rank, (0, 0), fx = 1 - 0.1 * x, fy = 1 - 0.1 * x)
+			if eliteResize.shape[0] < rightSide.shape[0] and eliteResize.shape[1] < rightSide.shape[1]:
+				classComp = cv.matchTemplate(rightSide, classResize, cv.TM_CCORR_NORMED)
 
-				if rankResize.shape[0] < rightSide.shape[0] and rankResize.shape[1] < rightSide.shape[1]:
-					rankComp = cv.matchTemplate(rightSide, rankResize, cv.TM_CCORR_NORMED)
+				if np.amax(classComp) > np.amax(amiyaProb):
+					amiyaProb = classComp
 
-					if np.amax(rankComp) > np.amax(rankProb):
-						rankProb = rankComp
-						skillRank = r[:-4].upper()
-						min_val, max_val, min_loc, max_loc = cv.minMaxLoc(rankComp)
-						location = max_loc
-						h, w = rankResize.shape
+	print(np.amax(amiyaProb), ' ', np.amax(eliteProb))
 
-	bottom_right = (location[0] + w, location[1] + h)    
+	if amiyaProb > eliteProb:
+		opPromotion = 'E2'
+		opName = 'Amiya - Guard'
 
-	plt.imshow(rankImg)
-	plt.waitforbuttonpress()
-	plt.close()
 
-	print(skillRank)
+
+	
+
 
 	# if skillRank == 'RANK 7':
 	# 	masteryTemp = cv.cvtColor(rightSide, cv.COLOR_BGR2GRAY)

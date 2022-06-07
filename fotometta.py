@@ -43,8 +43,12 @@ def initOpList():
 
 	for key in list(datajson):
 		if datajson[key]['subProfessionId'] != 'notchar1' and datajson[key]['subProfessionId'] != 'notchar2':
-			opList.append(datajson[key]['name'])
-			rarityList.append(datajson[key]['rarity'])
+			if 'Reserve' not in datajson[key]['name']:
+				opList.append(datajson[key]['name'])
+				rarityList.append(datajson[key]['rarity'])
+
+	opList.append('Amiya - Guard')
+	rarityList.append(4)
 
 #--------------------------------------------------------------------------------------------------------------
 
@@ -70,18 +74,23 @@ class addOpWindow(QMainWindow):
 		self.opS3 = ""
 		self.opModule = "None"
 
-		self.newOpData = []
 		self.hasModule = []
 		self.modName = []
 
 		with open('fotometta_output/output_dict.txt', 'r+') as file:
 			self.savedData = json.loads(file.read())
 
-		for key in list(datajson):
-			if datajson[key]['name'].lower() == newOp:
-				self.newOpData = datajson[key]
-				self.opName = datajson[key]['name']
-				self.opRarity = datajson[key]['rarity']
+		if newOp == 'amiya - guard':
+			self.opName = 'Amiya - Guard'
+			self.opRarity = 4
+			self.opS3 = ''
+			self.opModule = 'None' 
+		else:
+			for key in list(datajson):
+				if datajson[key]['name'].lower() == newOp:
+					self.opName = datajson[key]['name']
+					self.opRarity = datajson[key]['rarity']
+					break;
 
 		for key in list(self.savedData):
 			if self.opName == self.savedData[key]['Name']:
@@ -106,9 +115,15 @@ class addOpWindow(QMainWindow):
 		self.maxLevel = getMaxLevel(self.opPromotion, int(self.opRarity))
 
 		if self.opPromotion == 'E2':
-			newOp = self.opName.lower() + '2'
+			if newOp == 'amiya':
+				newOp = self.opName.lower() + '3'
+			else:
+				newOp = self.opName.lower() + '2'
 		else: 
-			newOp = self.opName.lower() + '1'
+			if newOp == 'amiya' and self.opPromotion == 'E1':
+				newOp = self.opName.lower() + '2'
+			else:
+				newOp = self.opName.lower() + '1'
 
 		self.opImage = QtWidgets.QLabel(self)
 		self.icon = QPixmap('ui_asset/op_icon/' + newOp + '.png').scaled(90, 90, QtCore.Qt.KeepAspectRatio, Qt.SmoothTransformation)
@@ -119,7 +134,7 @@ class addOpWindow(QMainWindow):
 		self.opImage.move(10, 12)
 
 		stars = ''
-		for i in range(0, self.newOpData['rarity'] + 1):
+		for i in range(0, int(self.opRarity) + 1):
 			stars += '★'
 
 		self.opRarityLabel = QtWidgets.QLabel(stars, self)
@@ -135,6 +150,8 @@ class addOpWindow(QMainWindow):
 		self.eliteButton.setStyleSheet("background-image : url(ui_asset/button_icon/" + self.opPromotion.lower() + ".png);")
 		self.eliteButton.setGeometry(125 + self.opNameLabel.size().width() + 13, 13, 70, 70)
 		self.eliteButton.clicked.connect(self.updateElite)
+		if self.opName == 'Amiya - Guard':
+			self.eliteButton.setEnabled(False)
 
 		self.opLevelLabel = QtWidgets.QLabel(self)
 		self.opLevelLabel.setFont(QFont('Roboto', 11))
@@ -177,10 +194,12 @@ class addOpWindow(QMainWindow):
 		self.s2Button.setEnabled(False)
 		self.s3Button.setEnabled(False)
 
-		if self.skillRank == 'RANK 7' and self.opPromotion == 'E2' and self.skillRank == 'RANK 7':
+		if self.skillRank == 'RANK 7' and self.opPromotion == 'E2':
 			self.s1Button.setEnabled(True)
 			self.s2Button.setEnabled(True)
-			self.s3Button.setEnabled(True)
+
+			if self.opRarity == 5 or self.opName == 'Amiya':
+				self.s3Button.setEnabled(True)
 
 		self.skillRankLabel = QtWidgets.QLabel(self)
 		self.skillRankLabel.setFont(QFont('Roboto', 9))
@@ -213,12 +232,13 @@ class addOpWindow(QMainWindow):
 		self.moduleButton.setGeometry(125 + self.opNameLabel.size().width() + 215, 13, 50, 50)
 		self.moduleButton.clicked.connect(self.updateModule)
 		self.moduleButton.setEnabled(False)
-		if self.opRarity == 3 and int(self.opLevel) >= 40:
-			self.moduleButton.setEnabled(True)
-		elif self.opRarity == 4 and int(self.opLevel) >= 50:
-			self.moduleButton.setEnabled(True)
-		elif self.opRarity == 5 and int(self.opLevel) >= 60:
-			self.moduleButton.setEnabled(True)
+		if self.opName in self.hasModule:
+			if self.opRarity == 3 and int(self.opLevel) >= 40:
+				self.moduleButton.setEnabled(True)
+			elif self.opRarity == 4 and int(self.opLevel) >= 50:
+				self.moduleButton.setEnabled(True)
+			elif self.opRarity == 5 and int(self.opLevel) >= 60:
+				self.moduleButton.setEnabled(True)
 
 		self.confirmButton = QtWidgets.QPushButton(self)
 		self.confirmButton.setText('Confirm')
@@ -235,6 +255,11 @@ class addOpWindow(QMainWindow):
 		qtRec.moveCenter(centre)
 		self.move(qtRec.topLeft())
 
+	def keyPressEvent(self, event):
+		if event.key() == Qt.Key_Enter:
+			self.confirmOp()
+			self.submitExit()
+
 	def updateElite(self):
 		if self.opPromotion == 'E0' and self.opRarity > 1:
 			self.eliteButton.setStyleSheet("background-image : url(ui_asset/button_icon/e1.png);")
@@ -250,11 +275,19 @@ class addOpWindow(QMainWindow):
 			self.opPromotion = 'E0'
 
 		if self.opPromotion == 'E0' or self.opPromotion == 'E1':
-			self.icon = QPixmap('ui_asset/op_icon/' + self.opName.lower() + '1.png').scaled(90, 90, QtCore.Qt.KeepAspectRatio, Qt.SmoothTransformation)
+			if self.opName == 'Amiya' and self.opPromotion == 'E0':
+				self.icon = QPixmap('ui_asset/op_icon/' + self.opName.lower() + '1.png').scaled(90, 90, QtCore.Qt.KeepAspectRatio, Qt.SmoothTransformation)
+			elif self.opName == 'Amiya' and self.opPromotion == 'E1':
+				self.icon = QPixmap('ui_asset/op_icon/' + self.opName.lower() + '2.png').scaled(90, 90, QtCore.Qt.KeepAspectRatio, Qt.SmoothTransformation)
+			else:
+				self.icon = QPixmap('ui_asset/op_icon/' + self.opName.lower() + '1.png').scaled(90, 90, QtCore.Qt.KeepAspectRatio, Qt.SmoothTransformation)
 			self.opImage.setPixmap(self.icon)
 			self.opImage.update()
 		else:
-			self.icon = QPixmap('ui_asset/op_icon/' + self.opName.lower() + '2.png').scaled(90, 90, QtCore.Qt.KeepAspectRatio, Qt.SmoothTransformation)
+			if self.opName == 'Amiya':
+				self.icon = QPixmap('ui_asset/op_icon/' + self.opName.lower() + '3.png').scaled(90, 90, QtCore.Qt.KeepAspectRatio, Qt.SmoothTransformation)
+			else:
+				self.icon = QPixmap('ui_asset/op_icon/' + self.opName.lower() + '2.png').scaled(90, 90, QtCore.Qt.KeepAspectRatio, Qt.SmoothTransformation)
 			self.opImage.setPixmap(self.icon)
 			self.opImage.update()
 
@@ -293,7 +326,7 @@ class addOpWindow(QMainWindow):
 		self.opS3 = ''
 
 		if self.skillRank == 'RANK 7' and self.opPromotion == 'E2':
-			if self.opRarity == 5:
+			if self.opRarity == 5 or self.opName == 'Amiya':
 				self.s1Button.setEnabled(True)
 				self.s2Button.setEnabled(True)
 				self.s3Button.setEnabled(True)
@@ -362,7 +395,7 @@ class addOpWindow(QMainWindow):
 		self.opS3 = ''
 
 		if self.skillRank == 'RANK 7' and self.opPromotion == 'E2':
-			if self.opRarity == 5:
+			if self.opRarity == 5 or self.opName == 'Amiya':
 				self.s1Button.setEnabled(True)
 				self.s2Button.setEnabled(True)
 				self.s3Button.setEnabled(True)
@@ -457,7 +490,7 @@ class addOpWindow(QMainWindow):
 		d = dict(zip(opFields, opInput))
 		finalData = {}
 		finalData['sample1'] = d
-		print(finalData)
+		# print(finalData)
 
 		with open('fotometta_output/output_dict.txt', 'r+') as file:
 			if os.stat('fotometta_output/output_dict.txt').st_size == 0:
@@ -768,7 +801,6 @@ class rosterTable(QMainWindow):
 class Worker(QObject):
 	finished = pyqtSignal()
 	progress = pyqtSignal()
-	# progress = pyqtSignal(int)
 	
 	def runCreateNew(self, selectedFolder):
 		nameReader = easyocr.Reader(['en'])
@@ -875,7 +907,7 @@ class mainWindow(QMainWindow):
 		self.icon = QPixmap('ui_asset/icon.png')
 		self.iconLabel.setPixmap(self.icon)
 		self.iconLabel.resize(356, self.icon.height())
-		self.iconLabel.hide()
+		# self.iconLabel.hide()
 
 		self.openRosterButton = QtWidgets.QPushButton('Open Roster', self)
 		self.openRosterButton.setStyleSheet("QPushButton { font-size: 15px; }")
@@ -915,6 +947,16 @@ class mainWindow(QMainWindow):
 		self.pBar.setGeometry(38, self.icon.height() + 93, 280, 25)
 		self.pBar.hide()
 
+		# self.menuBar = self.menuBar()
+		# self.recruitTab = QMenu("&Recruit Scan", self)
+		# self.menuBar.addMenu(self.recruitTab)
+
+
+
+
+
+
+
 	def showRoster(self):
 		self.openRosterButton.setEnabled(True)
 		self.folderButton.setEnabled(True)
@@ -941,7 +983,8 @@ class mainWindow(QMainWindow):
 
 		if os.path.isdir(self.selectedFolder) == False:
 			self.folderText.setText('Select a folder first')
-
+		elif not os.listdir(self.selectedFolder) or self.folderText.text() == 'Folder cannot be empty':
+			self.folderText.setText('Folder cannot be empty')
 		elif os.path.isdir(self.selectedFolder) == True:
 			confirm = False
 
@@ -989,6 +1032,8 @@ class mainWindow(QMainWindow):
 
 		if os.path.isdir(self.selectedFolder) == False:
 			self.folderText.setText('Select a folder first')
+		elif not os.listdir(self.selectedFolder) or self.folderText.text() == 'Folder cannot be empty':
+			self.folderText.setText('Folder cannot be empty')
 		elif os.path.isdir(self.selectedFolder) == True:
 			self.text1.setText('Please wait...')
 			self.thread = QThread()

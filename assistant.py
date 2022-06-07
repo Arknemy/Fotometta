@@ -87,6 +87,24 @@ def arkAssist(input, nameReader):
 					eliteProb = eliteComp
 					opPromotion = e[:-4].upper()
 
+	# AMIYA ONLY
+	if opName == 'Amiya':
+		amiyaProb = 0
+		classConversion = cv.imread('image_matching/amiya_class/classconver.jpg', 0)
+
+		for x in range(-5, 5):
+			classResize = cv.resize(classConversion, (0, 0), fx = 1 - 0.1 * x, fy = 1 - 0.1 * x)
+
+			if eliteResize.shape[0] < promoTemp.shape[0] and eliteResize.shape[1] < promoTemp.shape[1]:
+				classComp = cv.matchTemplate(promoTemp, classResize, cv.TM_CCORR_NORMED)
+
+				if np.amax(classComp) > np.amax(amiyaProb):
+					amiyaProb = classComp
+
+		if np.amax(amiyaProb) > np.amax(eliteProb):
+			opPromotion = 'E2'
+			opName = 'Amiya - Guard'
+
 # READ SKILL MASTERY-------------------------------------------------------------------------------------------
 
 	rankProb = 0
@@ -179,8 +197,6 @@ def arkAssist(input, nameReader):
 
 	if lvProb1 < 0.9:
 		for (bbox, text, prob) in levels:
-			(tl, tr, br, bl) = bbox
-
 			for lv in range(1, 90):
 				if lvProb2 < fuzz.partial_ratio(text, str(lv)):
 					lvProb2 = fuzz.partial_ratio(text, str(lv))
@@ -203,24 +219,6 @@ def arkAssist(input, nameReader):
 	lvtemp = re.sub("[^0-9]", "", lvtemp)
 	opLevel = int(lvtemp)
 	maxLevel = getMaxLevel(opPromotion, opRarity)
-
-	# if opRarity == 5 and opPromotion == 'E1' or opRarity == 4 and opPromotion == 'E2':
-	# 	maxLevel = 80
-	# elif opRarity == 4 and opPromotion == 'E1' or opRarity == 3 and opPromotion == 'E2':
-	# 	maxLevel = 70
-	# elif opRarity == 3 and opPromotion == 'E1':
-	# 	maxLevel = 60
-	# elif opRarity == 2 and opPromotion == 'E1':
-	# 	maxLevel = 55
-	# elif opRarity == 5 and opPromotion == 'E0' or opRarity == 4 and opPromotion == 'E0':
-	# 	maxLevel = 50
-	# elif opRarity == 3 and opPromotion == 'E0':
-	# 	maxLevel = 45
-	# elif opRarity == 2 and opPromotion == 'E0':
-	# 	maxLevel = 40
-	# elif opRarity == 1 or opRarity == 0:
-	# 	opPromotion = 'E0'
-	# 	maxLevel = 30
 
 # READ MODULE--------------------------------------------------------------------------------------------------
 
@@ -280,7 +278,7 @@ def arkAssist(input, nameReader):
 		opInput[6] = ""
 
 	opDict = {}
-	# print(dict(zip(opFields, opInput)))
+	print(dict(zip(opFields, opInput)))
 	return dict(zip(opFields, opInput))
 
 #--------------------------------------------------------------------------------------------------------------
@@ -298,7 +296,7 @@ def resizeRoster(selectedFolder):
 		destination = 'fotometta_input/sample' + str(index) + '.jpg'
 		index = index + 1
 
-		if oDim[1] > reso:
+		if oDim[1] != reso:
 			ratio = reso / oDim[1]
 			resized = cv.resize(original, (0, 0), fx = ratio, fy = ratio)
 			cv.imwrite(destination, resized)
@@ -424,7 +422,11 @@ def arrToDict(a):
 		modCode = ''
 
 		for key, value in datajson.items():
-			if datajson[key]['name'] == a[i - 1]['Name']:
+			if a[i - 1]['Name'] == 'Amiya - Guard':
+				finalData['char_1001_amiya2'] = a[i - 1]
+				charCode = 'char_1001_amiya2'
+				break;
+			elif datajson[key]['name'] == a[i - 1]['Name']:
 				finalData[key] = a[i - 1]
 				charCode = key
 				break;
@@ -520,14 +522,20 @@ def changeStatsToFit(d):
 
 	return d
 
+#--------------------------------------------------------------------------------------------------------------
+
 def opToText():
 	datajson = json.load(open('json_files/character_table.json', encoding = "utf8"))
 	names = []
 
 	for key in list(datajson):
 		if datajson[key]['subProfessionId'] != 'notchar1' and datajson[key]['subProfessionId'] != 'notchar2':
-			names.append(datajson[key]['name'])
+			if 'Reserve' not in datajson[key]['name']:
+				names.append(datajson[key]['name'])
 
 	with open('json_files/character_names.txt', 'w') as file:
 		for name in names:
 			file.write('%s\n' % name)
+
+#--------------------------------------------------------------------------------------------------------------
+
