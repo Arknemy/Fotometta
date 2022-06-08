@@ -1,6 +1,6 @@
 easyocr==1.4.2
 fuzzywuzzy==0.18.0
-matplotlib==3.4.2
-numpy==1.21.2
+matplotlib==3.5.2
+numpy==1.22.3
 opencv_python_headless==4.5.4.60
 PyQt5==5.15.6

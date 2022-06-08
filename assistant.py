@@ -103,7 +103,15 @@ def arkAssist(input, nameReader):
 
 		if np.amax(amiyaProb) > np.amax(eliteProb):
 			opPromotion = 'E2'
-			opName = 'Amiya - Guard'
+			amiyaCaster = cv.imread('image_matching/amiya_class/caster.jpg', 0)
+			amiyaGuard = cv.imread('image_matching/amiya_class/guard.jpg', 0)
+			casterComp = cv.matchTemplate(nameSide, amiyaCaster, cv.TM_CCORR_NORMED)
+			guardComp = cv.matchTemplate(nameSide, amiyaGuard, cv.TM_CCORR_NORMED)
+
+			if np.amax(casterComp) > np.amax(guardComp):
+				opName = 'Amiya'
+			else:
+				opName = 'Amiya - Guard'
 
 # READ SKILL MASTERY-------------------------------------------------------------------------------------------
 
@@ -278,7 +286,7 @@ def arkAssist(input, nameReader):
 		opInput[6] = ""
 
 	opDict = {}
-	print(dict(zip(opFields, opInput)))
+	# print(dict(zip(opFields, opInput)))
 	return dict(zip(opFields, opInput))
 
 #--------------------------------------------------------------------------------------------------------------

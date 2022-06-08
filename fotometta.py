@@ -126,6 +126,8 @@ class addOpWindow(QMainWindow):
 				newOp = self.opName.lower() + '1'
 
 		self.opImage = QtWidgets.QLabel(self)
+		if newOp == '\'justice knight\'1':
+			newOp = 'justice knight1'
 		self.icon = QPixmap('ui_asset/op_icon/' + newOp + '.png').scaled(90, 90, QtCore.Qt.KeepAspectRatio, Qt.SmoothTransformation)
 		self.opImage.resize(self.icon.width() + 10, 100)
 		self.opImage.setAlignment(Qt.AlignCenter)
@@ -259,6 +261,8 @@ class addOpWindow(QMainWindow):
 		if event.key() == Qt.Key_Enter:
 			self.confirmOp()
 			self.submitExit()
+		elif event.key() == Qt.Key_Escape:
+			self.close()
 
 	def updateElite(self):
 		if self.opPromotion == 'E0' and self.opRarity > 1:
@@ -553,27 +557,32 @@ class rosterTable(QMainWindow):
 		self.height = 558
 		self.mSize = 0
 
-		self.initTable()
+		self.initTable(self.table)
+		self.initButtons()
 		self.centerWindow()
 
-	def initTable(self):
+		self.addOpW = addOpWindow()
+		self.retrieveSignal = QtWidgets.QLineEdit(text = '')
+
+	def initTable(self, table):
 		jsonTable = json.loads(open('fotometta_output/output_dict.txt', 'r').read())
 		row = len(jsonTable.keys())
-		col = len(jsonTable[list(jsonTable.keys())[0]]) + 1
+		col = len(jsonTable[list(jsonTable.keys())[0]]) + 2
 
 		initOpList()
 
-		self.table.clear()
-		self.table.setFont(QFont('Roboto', 11))
-		self.table.setRowCount(row)
-		self.table.setColumnCount(col)
+		table.clear()
+		table.setFont(QFont('Roboto', 11))
+		table.setRowCount(row)
+		table.setColumnCount(col)
 		headers = ['Icon']
 
 		for index, (i, j) in enumerate(jsonTable[list(jsonTable.keys())[0]].items()):
 			headers.append(i)
+		headers.insert(2, 'Class')
 
-		self.table.setHorizontalHeaderLabels(headers)
-		self.table.horizontalHeader().setStyleSheet("QHeaderView { font-size: 10pt; font-weight: bold;}")
+		table.setHorizontalHeaderLabels(headers)
+		table.horizontalHeader().setStyleSheet("QHeaderView { font-size: 10pt; font-weight: bold;}")
 		userRoster.clear()
 
 		for i, valr in enumerate(jsonTable.keys()):
@@ -584,30 +593,45 @@ class rosterTable(QMainWindow):
 
 				if temp == 'Name':
 					fileName = data.lower()
+					opName = data
 					userRoster.append(data)
+					if fileName == '\'justice knight\'':
+						fileName = 'justice knight'
+
+				if j > 0:
+					skip += 1
+
+				if j == 1:
+					for key in list(datajson):
+						if opName == 'Amiya - Guard':
+							table.setCellWidget(i, j + 1, self.getImageQt('class_icon/artsfghter.png', self.mSize))
+							break
+						elif datajson[key]['name'] == opName:
+							table.setCellWidget(i, j + 1, self.getImageQt('class_icon/' + datajson[key]["subProfessionId"] + '.png', self.mSize))
+							break
 
 				if data == 'M0':
-					self.table.setCellWidget(i, skip, self.getImageQt('m0.png', self.mSize))
+					table.setCellWidget(i, skip, self.getImageQt('m0.png', self.mSize))
 				elif data == 'M1':
-					self.table.setCellWidget(i, skip, self.getImageQt('m1.png', self.mSize))
+					table.setCellWidget(i, skip, self.getImageQt('m1.png', self.mSize))
 				elif data == 'M2':
-					self.table.setCellWidget(i, skip, self.getImageQt('m2.png', self.mSize))
+					table.setCellWidget(i, skip, self.getImageQt('m2.png', self.mSize))
 				elif data == 'M3':
-					self.table.setCellWidget(i, skip, self.getImageQt('m3.png', self.mSize))
+					table.setCellWidget(i, skip, self.getImageQt('m3.png', self.mSize))
 				elif temp == 'Potential':
 					pot = 'p' + str(data) +'.png'
-					self.table.setCellWidget(i, skip, self.getImageQt(pot, self.mSize))
+					table.setCellWidget(i, skip, self.getImageQt(pot, self.mSize))
 				elif data == 'E0':
-					self.table.setCellWidget(i, skip, self.getImageQt('e0.png', self.mSize))
+					table.setCellWidget(i, skip, self.getImageQt('e0.png', self.mSize))
 					fileName += '1.png'
 				elif data == 'E1':
-					self.table.setCellWidget(i, skip, self.getImageQt('e1.png', self.mSize))
+					table.setCellWidget(i, skip, self.getImageQt('e1.png', self.mSize))
 					if fileName == 'amiya':
 						fileName += '2.png'
 					else:
 						fileName += '1.png'
 				elif data == 'E2':
-					self.table.setCellWidget(i, skip, self.getImageQt('e2.png', self.mSize))
+					table.setCellWidget(i, skip, self.getImageQt('e2.png', self.mSize))
 					if fileName == 'amiya':
 						fileName += '3.png'
 					else:
@@ -618,42 +642,47 @@ class rosterTable(QMainWindow):
 					for k in range (0, int(data)):
 						stars += '★'
 
-					self.table.setItem(i, skip, QTableWidgetItem(stars))
+					table.setItem(i, skip, QTableWidgetItem(stars))
 				elif temp == 'Module':
 					if data != 'None' and data != 'True':
-						self.table.setCellWidget(i, skip, self.getImageQt('module_icon/' + data + '.png', self.mSize))
+						table.setCellWidget(i, skip, self.getImageQt('module_icon/' + data + '.png', self.mSize))
 				else:
-					self.table.setItem(i, skip, QTableWidgetItem(data))
+					table.setItem(i, skip, QTableWidgetItem(data))
 
 				if j == 9:
-					self.table.setCellWidget(i, 0, self.getImageQt('op_icon/' + fileName, self.minDim))
+					table.setCellWidget(i, 0, self.getImageQt('op_icon/' + fileName, self.minDim))
 
-			self.table.setRowHeight(i, self.minDim)
+			table.setRowHeight(i, self.minDim)
 
-		self.table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
-		self.table.setSizeAdjustPolicy(QtWidgets.QAbstractScrollArea.AdjustToContents)
-		self.table.resizeColumnsToContents()
-		self.table.setColumnWidth(1, 220)
-		self.table.verticalScrollBar().setStyleSheet("QScrollBar:vertical { width: 15px; }")
-		self.table.horizontalScrollBar().setStyleSheet("QScrollBar:horizontal { height: 15px; }")
-		self.tableWidth = self.table.verticalHeader().size().width()
-		self.tableHeight = self.table.horizontalHeader().size().height()
+		table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
+		table.setSizeAdjustPolicy(QtWidgets.QAbstractScrollArea.AdjustToContents)
+		table.resizeColumnsToContents()
+		table.setColumnWidth(1, 220)
+		table.verticalScrollBar().setStyleSheet("QScrollBar:vertical { width: 15px; }")
+		table.horizontalScrollBar().setStyleSheet("QScrollBar:horizontal { height: 15px; }")
+		table.setStyleSheet('QTableCornerButton::section {background-color: #626262;}')
+		self.tableWidth = table.verticalHeader().size().width()
+		self.tableHeight = table.horizontalHeader().size().height()
 
 		for i in range(0, col):
-			if self.table.columnWidth(i) < self.minDim:
-				self.table.setColumnWidth(i, self.minDim)
+			if table.columnWidth(i) < self.minDim:
+				table.setColumnWidth(i, self.minDim)
 
-		for i in range(self.table.columnCount()):
-			self.tableWidth += self.table.columnWidth(i)
+		for i in range(table.columnCount()):
+			self.tableWidth += table.columnWidth(i)
 
-		for i in range(self.table.rowCount()):
-			self.tableHeight += self.table.rowHeight(i) + 1
+		for i in range(table.rowCount()):
+			self.tableHeight += table.rowHeight(i) + 1
 
 		self.tableWidth += 2 #scrollbar width
 
 		if self.tableHeight > self.height:
 			self.tableWidth += 15
 
+		table.setGeometry(QtCore.QRect(0, 30, self.tableWidth, self.height - 30))
+		self.setFixedSize(self.tableWidth + 150, self.height)
+
+	def initButtons(self):
 		self.filterLabel = QtWidgets.QLabel('Filter', self)
 		self.filterLabel.setFont(QFont('Roboto', 11))
 		self.filterLabel.setFixedWidth(self.width())
@@ -662,11 +691,16 @@ class rosterTable(QMainWindow):
 		self.inputText = QLineEdit(self)
 		self.inputText.resize(250, 20)
 		self.inputText.move(45, 5)
-		self.inputText.textChanged.connect(self.filter)
+		self.inputText.textChanged.connect(partial(self.filter, self.table))
 
 		self.addButton = QtWidgets.QPushButton('Add/Update', self)
 		self.addButton.setGeometry(self.tableWidth + 15, 28, 120, 40)
 		self.addButton.clicked.connect(self.addOperator)
+
+		# self.editButton = QtWidgets.QPushButton('Edit Table', self)
+		# self.editButton.setGeometry(self.tableWidth + 15, 83, 120, 40)
+		# self.editButton.setCheckable(True)
+		# self.editButton.clicked.connect(self.editTable)
 
 		self.outputImageButton = QtWidgets.QPushButton('Output to Image', self)
 		self.outputImageButton.setGeometry(self.tableWidth + 15, 445, 120, 40)
@@ -682,12 +716,6 @@ class rosterTable(QMainWindow):
 		self.fiaLabel.setPixmap(self.fiaIcon)
 		self.fiaLabel.setGeometry(self.tableWidth + 5, 265, self.fiaIcon.width() - 60, self.fiaIcon.height() - 30)
 
-		self.table.setGeometry(QtCore.QRect(0, 30, self.tableWidth, self.height - 30))
-		self.setFixedSize(self.tableWidth + 150, self.height)
-
-		self.addOpW = addOpWindow()
-		self.retrieveSignal = QtWidgets.QLineEdit(text = '')
-
 	def centerWindow(self):
 		self.setGeometry(0, 0, self.tableWidth + 150, self.height)
 		self.setWindowTitle('Roster')
@@ -697,21 +725,21 @@ class rosterTable(QMainWindow):
 		qtRec.moveCenter(centre)
 		self.move(qtRec.topLeft())
 
-	def filter(self):
+	def filter(self, table):
 		if self.inputText.text() != '' and self.inputText.text().isalpha() == True:
 			search = self.inputText.text().lower()
 
-			for i in range(0, self.table.rowCount()):
-				item = self.table.item(i, 1).text().lower()
+			for i in range(0, table.rowCount()):
+				item = table.item(i, 1).text().lower()
 
 				if search not in item:
-					self.table.setRowHidden(i, True)
+					table.setRowHidden(i, True)
 				else: 
-					self.table.setRowHidden(i, False)
+					table.setRowHidden(i, False)
 
 		else:
-			for i in range(0, self.table.rowCount()):
-				self.table.setRowHidden(i, False)
+			for i in range(0, table.rowCount()):
+				table.setRowHidden(i, False)
 
 	@QtCore.pyqtSlot(str)
 	def getReturn(self, text):
@@ -720,19 +748,23 @@ class rosterTable(QMainWindow):
 		self.filterLabel.hide()
 		self.inputText.hide()
 		self.addButton.hide()
+		# self.editButton.hide()
 		self.fiaLabel.hide()
 		self.outputImageButton.hide()
 		self.closeButton.hide()
-		self.initTable()
+		self.initTable(self.table)
+		self.initButtons()
 		self.filterLabel.update()
 		self.inputText.update()
 		self.addButton.update()
+		# self.editButton.update()
 		self.fiaLabel.update()
 		self.outputImageButton.update()
 		self.closeButton.update()
 		self.filterLabel.show()
 		self.inputText.show()
 		self.addButton.show()
+		# self.editButton.show()
 		self.fiaLabel.show()
 		self.outputImageButton.show()
 		self.closeButton.show()
@@ -946,16 +978,6 @@ class mainWindow(QMainWindow):
 		self.pBar = QProgressBar(self)
 		self.pBar.setGeometry(38, self.icon.height() + 93, 280, 25)
 		self.pBar.hide()
-
-		# self.menuBar = self.menuBar()
-		# self.recruitTab = QMenu("&Recruit Scan", self)
-		# self.menuBar.addMenu(self.recruitTab)
-
-
-
-
-
-
 
 	def showRoster(self):
 		self.openRosterButton.setEnabled(True)
